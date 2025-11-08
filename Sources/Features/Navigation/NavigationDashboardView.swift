@@ -7,24 +7,20 @@ struct NavigationDashboardView: View {
         ScrollView {
             VStack(spacing: 20) {
                 GlassCard {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("航行マップ")
                             .font(.title2.bold())
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue.opacity(0.6), .cyan.opacity(0.4)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .frame(height: 220)
-                            .overlay(alignment: .topTrailing) {
-                                Text("デモマップ")
-                                    .font(.caption)
-                                    .padding(6)
-                                    .background(.ultraThinMaterial, in: Capsule())
-                            }
+                            .foregroundStyle(.white)
+                        SeaMapView(locationService: viewModel.locationService)
+                            .frame(height: 260)
+                        HStack {
+                            Label("ルートポイント \(viewModel.locationService.routePoints.count)", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                            Spacer()
+                            Label("追跡中", systemImage: "antenna.radiowaves.left.and.right")
+                                .foregroundStyle(.green)
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.8))
                     }
                 }
 
