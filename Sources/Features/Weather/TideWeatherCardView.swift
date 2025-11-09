@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TideWeatherCardView: View {
     let snapshot: WeatherSnapshot
+    let tideReport: TideReport?
 
     var body: some View {
         GlassCard {
@@ -11,7 +12,11 @@ struct TideWeatherCardView: View {
                     .foregroundStyle(.white)
 
                 HStack(spacing: 20) {
-                    TideGauge(height: snapshot.tideHeight, state: snapshot.tideState)
+                    TideGauge(
+                        height: tideReport?.height ?? snapshot.tideHeight,
+                        state: tideReport?.state ?? snapshot.tideState,
+                        source: tideReport?.source
+                    )
                     Divider().frame(height: 80).overlay(Color.white.opacity(0.3))
                     WeatherStack(snapshot: snapshot)
                 }
@@ -23,6 +28,7 @@ struct TideWeatherCardView: View {
 private struct TideGauge: View {
     let height: Double
     let state: String
+    let source: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -33,6 +39,11 @@ private struct TideGauge: View {
                 .font(.caption)
                 .textCase(.uppercase)
                 .foregroundStyle(.white.opacity(0.8))
+            if let source {
+                Text(source)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
         }
     }
 }

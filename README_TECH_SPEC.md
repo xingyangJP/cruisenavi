@@ -1,4 +1,4 @@
-# SeaNavi 技術仕様書（README_TECH_SPEC.md）
+# Navis 技術仕様書（README_TECH_SPEC.md）
 バージョン: 1.0  
 作成日: 2025-11-08  
 作成者: Yukihiro  
@@ -6,7 +6,7 @@
 ---
 
 ## 1. ドキュメント目的
-SeaNavi（iOS航行ナビアプリ）の実装・運用に必要な技術要件を網羅する。要件定義書（README.md）とUI設計書（README_UI.md）を統合し、アーキテクチャ・データフロー・開発ルールを本書で参照できるようにする。
+Navis（iOS航行ナビアプリ）の実装・運用に必要な技術要件を網羅する。要件定義書（README.md）とUI設計書（README_UI.md）を統合し、アーキテクチャ・データフロー・開発ルールを本書で参照できるようにする。
 
 ---
 
@@ -35,7 +35,7 @@ SeaNavi（iOS航行ナビアプリ）の実装・運用に必要な技術要件�
 
 ### 4.1 航行ナビゲーション
 - センサー: CoreLocation (1s interval), CoreMotion (傾きで背景パララックス).
-- ルーティング: 浅瀬ポリゴン (GeoJSON) を除外したカスタムルーティング。ETAは `CLGeodesic` と潮流補正で算出。
+- ルーティング: GPS現在地から最寄りの港・海岸ライン（MapKitの海岸線 or 事前定義ノード）を起点に、浅瀬ポリゴン (GeoJSON) を除外した海上ルートを生成。ETAは `CLGeodesic` と潮流補正で算出。
 - UI: Home画面上部に NavigationHUD（GlassCard）を固定表示、Live Activities へ速度/ETAを更新。
 - Map: MapKit Overlays + Custom Renderer で浅瀬/航行禁止区域を描画。進行方向は `MKAnnotation` の heading を利用。
 
@@ -57,6 +57,7 @@ SeaNavi（iOS航行ナビアプリ）の実装・運用に必要な技術要件�
 ### 4.5 港湾・地域情報
 - データ: 国交省APIを週次で取得し JSON キャッシュ。お気に入りは CoreData で管理。
 - UI: GlassCard リスト + SF Symbols。地域タブを `SegmentedControl` + `.thinMaterial` 背景で切替。
+- ルートプレビュー: 目的地をセットした時点でフルスクリーンのルートプレビューを表示し、起点〜目的地の全体ラインと「スタート」ボタンを提示。ユーザーがスタートを押すとナビゲーションHUD/Drivingモードへ遷移。
 
 ### 4.6 緊急サポート
 - ボタン: 常時表示の大型 `.regularMaterial` ガラスボタン。`callkit://118` をトリガ。
@@ -198,4 +199,3 @@ APIクライアントは TLS 1.3 / Cert Pinning を実装し、データは JSON
 ---
 
 本仕様書は README.md / README_UI.md の要件を技術視点で再構成したものであり、開発時は本書をベースに詳細設計・実装を進める。
-

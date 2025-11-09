@@ -30,7 +30,8 @@ struct SeaMapView: View {
                 MapPolyline(coordinates: route)
                     .stroke(.teal, lineWidth: 3)
                 MapPolygon(coordinates: MockRestrictedArea.osakaBay)
-                    .fill(.red.opacity(0.1))
+                    .foregroundStyle(.red.opacity(0.15))
+                    .stroke(.red.opacity(0.4), lineWidth: 1)
             }
         }
         .mapStyle(.hybrid(elevation: .realistic))

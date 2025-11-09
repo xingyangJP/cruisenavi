@@ -21,7 +21,14 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     func requestAuthorization() {
-        locationManager.requestWhenInUseAuthorization()
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            startAuthorizedUpdates()
+        default:
+            break
+        }
     }
 
     func startTracking() {
@@ -29,14 +36,38 @@ final class LocationService: NSObject, ObservableObject {
             startMockPlayback()
             return
         }
-        locationManager.startUpdatingLocation()
-        locationManager.startUpdatingHeading()
+
+        switch locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            startAuthorizedUpdates()
+        case .notDetermined:
+            locationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            startMockPlayback()
+        @unknown default:
+            startMockPlayback()
+        }
     }
 
     func stopTracking() {
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
         playbackTimer?.cancel()
+    }
+
+    func currentCoordinateOrDefault() -> CLLocationCoordinate2D {
+        if let coordinate = currentLocation?.coordinate {
+            return coordinate
+        }
+        if let last = routePoints.last {
+            return last
+        }
+        return CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)
+    }
+
+    private func startAuthorizedUpdates() {
+        locationManager.startUpdatingLocation()
+        locationManager.startUpdatingHeading()
     }
 
     private func startMockPlayback() {
@@ -65,6 +96,20 @@ extension LocationService: CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         heading = newHeading
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            startAuthorizedUpdates()
+        case .denied, .restricted:
+            stopTracking()
+            startMockPlayback()
+        case .notDetermined:
+            break
+        @unknown default:
+            break
+        }
     }
 }
 

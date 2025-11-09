@@ -1,4 +1,4 @@
- SeaNavi UI設計書（README_UI.md）
+ Navis UI設計書（README_UI.md）
 バージョン: 1.0  
 作成日: 2025-11-08  
 作成者: Yukihiro  
@@ -11,9 +11,10 @@
 > 深海の透明感、航行の静けさ、Apple UIの精密さを融合した  
 > 「海上のガラスナビゲーション」体験を提供する。
 
-SeaNavi は、iOS 25 純正の **Material・Motion・Depthデザイン体系** に従い、  
+Navis は、iOS 25 純正の **Material・Motion・Depthデザイン体系** に従い、  
 透明感・奥行き・浮遊感を組み合わせた UI を採用する。  
-全体トーンは「AquaGlass」を基調とし、波や風を感じさせる流体的なアニメーションを実装する。
+全体トーンは「AquaGlass」を基調とし、波や風を感じさせる流体的なアニメーションを実装する。  
+目的地選択後は必ずフルスクリーンのルートプレビューを挟み、全航路と「スタート」ボタンを提示してから Driving モードへ遷移する UX を統一する。
 
 ---
 
@@ -174,13 +175,24 @@ Button(action: triggerSOS) {
 項目	内容
 入力欄	音声入力対応TextField（.thinMaterial背景）
 候補表示	リストビュー（SF Symbol付き）
-ボタン	“ルート生成” ボタン（Aqua Teal）
-補助	現在地から自動推定候補表示
+ ボタン	“ルート生成” ボタン（Aqua Teal）
+ 補助	現在地から自動推定候補表示
 
 
 ⸻
 
-3. Log（クルーズログ）
+3. Route Preview（ルートプレビュー）
+
+項目	内容
+表示	全画面 MapKit（最寄り港/海岸〜ゴールまでのライン）
+情報	スタート/ゴールの距離・ETA・波/風情報をカード表示
+操作	「スタート」ボタンで Driving モードへ遷移、閉じるでホームへ戻る
+背景	Dark Glass + グラデーションラインエフェクト
+
+
+⸻
+
+4. Log（クルーズログ）
 
 項目	内容
 レイアウト	List + GlassCardスタイル
@@ -191,7 +203,7 @@ Button(action: triggerSOS) {
 
 ⸻
 
-4. Tide & Weather（潮汐・気象）
+5. Tide & Weather（潮汐・気象）
 
 項目	内容
 上部	潮位グラフ（Charts）
@@ -202,7 +214,7 @@ Button(action: triggerSOS) {
 
 ⸻
 
-5. Settings（設定・安全）
+6. Settings（設定・安全）
 
 項目	内容
 スイッチ	アラート有効化、音声警告ON/OFF
@@ -273,4 +285,3 @@ ETA	到着予定時刻（リアルタイム更新）
 ⸻
 
 © 2025 Yukihiro / XerographiX
-

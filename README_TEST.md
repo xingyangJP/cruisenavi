@@ -1,8 +1,8 @@
-# SeaNavi テスト手順書（README_TEST.md）
-バージョン: 0.2  
-更新日: 2025-11-08  
+# Navis テスト手順書（README_TEST.md）
+バージョン: 0.3  
+更新日: 2025-11-09  
 
-本書は SeaNavi iOS アプリの機能検証を **Xcode シミュレータ** 上で実施するための手順をまとめたものです。README.md / README_TECH_SPEC.md に定義された要件を基準に、現状開発済みの範囲に応じてテストケースを追記していきます。
+本書は Navis iOS アプリの機能検証を **Xcode シミュレータ** 上で実施するための手順をまとめたものです。README.md / README_TECH_SPEC.md に定義された要件を基準に、現状開発済みの範囲に応じてテストケースを追記していきます。
 
 ---
 
@@ -20,12 +20,13 @@
    git clone https://github.com/xingyangJP/cruisenavi.git
    cd cruisenavi
    ```
-2. Xcode で `SeaNavi.xcodeproj`（または `.xcworkspace`）を開く  
+2. Xcode で Navis プロジェクト（`SeaNavi.xcodeproj`）を開く  
    - まだ存在しない場合は `File > New > Project…` で SwiftUI App を作成し、`Sources/` 以下のファイルをプロジェクトに追加する
-3. ターゲットを `SeaNavi (iOS)`、シミュレータを `iPhone 15 Pro (iOS 18)` に設定
+3. ターゲットを `SeaNavi (iOS)`（アプリ表示名 Navis）、シミュレータを `iPhone 15 Pro (iOS 18)` に設定
 4. `Command + R` でビルド＆起動し、位置情報の許可ダイアログを「許可」に設定
 5. `Debug > Location` で `Freeway Drive` または自作 GPX (`Resources/GPX/tokyo_bay_route.gpx`) を選択
-6. 気象 API を実機で試す場合は `Config/Weather.plist` に `baseURL` と `apiKey` を登録し、`WeatherAPIConfiguration` に読み込ませる
+6. `Config/Weather.plist` に OpenWeather Marine の `baseURL` / `apiKey` を設定し、Project Navigator からターゲットに含める（デフォルトは `https://api.openweathermap.org/data/3.0/onecall`）
+7. 潮汐データは Open-Meteo Marine API を使用するため、インターネット接続を有効化しておく
 
 ---
 
@@ -44,17 +45,20 @@
 2. `MockRouteProvider` の配列が最後まで到達すると循環すること、および `routePoints` カウンタが HUD 下のラベルに反映されることを確認
 3. 進行方向（course）が `NavigationHUDView` に 3 桁の角度で表示されること、速度が 0 未満にならないことを確認
 4. `MockRestrictedArea` のポリゴンが赤色レイヤーで描画され、視覚的に浅瀬領域を区別できることを確認
+5. 目的地を設定するとフルスクリーンのルートプレビューが表示され、現在地最寄りの港/海岸をスタート地点として海上ルートが描画されることを確認
+6. プレビュー画面で「スタート」ボタンを押した際に Driving モードへ遷移し、同じルートラインでナビゲーションが開始されることを確認
 
 ### 4.2 浅瀬・危険区域警告
 1. テスト用 GPX（浅瀬接近コース）を読み込み
 2. 航行禁止ポリゴンに 100m 以内で HUD に赤色警告が表示され、Haptic が 1 回発火
 3. 設定画面で閾値スライダーを変更し、即座に警告距離が反映される
 
-### 4.3 気象・潮汐（API クライアント）
-1. モック API サーバを起動 (`mock/weather_server.sh start`) し、`WeatherAPIConfiguration` の `baseURL` をモックに向ける
-2. 起動後 1 回目の `Task` で `WeatherSnapshot` が更新されること、60 秒ごとに再フェッチが走ることを Xcode の `Debug > View Debugging > View Value` で確認
-3. API を停止させ、警告ラベルに「気象データ更新に失敗」と表示されるフォールバックを確認
-4. `TideAPIClient` を `MockTideService` から差し替えた場合でも `TideReport` の値が UI へ渡せる（Console ログ出力）ことを確認
+### 4.3 気象・潮汐（実 API フロー）
+1. `Config/Weather.plist` に実キーを設定し、シミュレータ/実機から外部通信できることを確認
+2. アプリ起動直後に `NavigationHUDView` 下の警告が消え、`風速` `波高` が OpenWeather の値（Console にレスポンスサイズが出力される）へ更新されることを確認
+3. 起動から 60 秒後に再リクエストが走り、`warningMessage` が風速・波高しきい値に応じて `.warning / .advisory` へ変化するかを確認
+4. ネットワークを遮断（シミュレータなら `Features > Network Link Conditioner`）してリクエストを失敗させ、「気象データ更新に失敗」のバナーが表示されることを確認
+5. 潮汐カードに `Open-Meteo` ソース名が表示され、潮位と状態（Rising/Falling/Slack）が 60 秒ごとに更新されるか確認
 
 ### 4.4 クルーズログ
 1. 航行開始ボタンを押下し 5 分間シミュレーションを走らせる

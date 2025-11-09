@@ -1,0 +1,601 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D3046AC62EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */; };
+		D3046AC72EBF1F0F00E1A497 /* WeatherSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */; };
+		D3046AC82EBF1F0F00E1A497 /* TideReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */; };
+		D3046AC92EBF1F0F00E1A497 /* WeatherConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */; };
+		D3046ACA2EBF1F0F00E1A497 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AC02EBF1F0F00E1A497 /* WeatherService.swift */; };
+		D3046ACB2EBF1F0F00E1A497 /* SeaMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */; };
+		D3046ACC2EBF1F0F00E1A497 /* VoyageLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */; };
+		D3046ACD2EBF1F0F00E1A497 /* PortsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB62EBF1F0F00E1A497 /* PortsListView.swift */; };
+		D3046ACE2EBF1F0F00E1A497 /* NavigationDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB22EBF1F0F00E1A497 /* NavigationDashboardView.swift */; };
+		D3046ACF2EBF1F0F00E1A497 /* TideWeatherCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */; };
+		D3046AD02EBF1F0F00E1A497 /* SeaNaviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */; };
+		D3046AD12EBF1F0F00E1A497 /* LogbookListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB02EBF1F0F00E1A497 /* LogbookListView.swift */; };
+		D3046AD22EBF1F0F00E1A497 /* Harbor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */; };
+		D3046AD32EBF1F0F00E1A497 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AC22EBF1F0F00E1A497 /* LocationService.swift */; };
+		D3046AD52EBF1FC500E1A497 /* Weather.plist in Resources */ = {isa = PBXBuildFile; fileRef = D3046AD42EBF1FC500E1A497 /* Weather.plist */; };
+		D3046AD72EBF349600E1A497 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AD62EBF349600E1A497 /* SplashView.swift */; };
+		D3046ADC2EBF354800E1A497 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ADA2EBF354800E1A497 /* SplashView.swift */; };
+		D3046ADF2EBF357300E1A497 /* Color+SeaNavi.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */; };
+		D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */; };
+		D353FFF12EC05EF700F3CA59 /* NauticalRoutePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */; };
+		D353FFF22EC05EF700F3CA59 /* RoutingWaypoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */; };
+		D386513D2EC02FAA0013CA16 /* RouteSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513C2EC02FAA0013CA16 /* RouteSummary.swift */; };
+		D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513E2EC030350013CA16 /* DestinationSearchView.swift */; };
+		D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */; };
+		D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */; };
+		D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeaNaviApp.swift; sourceTree = "<group>"; };
+		D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherConfiguration.swift; sourceTree = "<group>"; };
+		D3046AB02EBF1F0F00E1A497 /* LogbookListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogbookListView.swift; sourceTree = "<group>"; };
+		D3046AB22EBF1F0F00E1A497 /* NavigationDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardView.swift; sourceTree = "<group>"; };
+		D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewModel.swift; sourceTree = "<group>"; };
+		D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeaMapView.swift; sourceTree = "<group>"; };
+		D3046AB62EBF1F0F00E1A497 /* PortsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortsListView.swift; sourceTree = "<group>"; };
+		D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideWeatherCardView.swift; sourceTree = "<group>"; };
+		D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Harbor.swift; sourceTree = "<group>"; };
+		D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideReport.swift; sourceTree = "<group>"; };
+		D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoyageLog.swift; sourceTree = "<group>"; };
+		D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSnapshot.swift; sourceTree = "<group>"; };
+		D3046AC02EBF1F0F00E1A497 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		D3046AC22EBF1F0F00E1A497 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		D3046AD42EBF1FC500E1A497 /* Weather.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Weather.plist; path = ../Config/Weather.plist; sourceTree = SOURCE_ROOT; };
+		D3046AD62EBF349600E1A497 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SplashView.swift; path = ../Sources/Features/Splash/SplashView.swift; sourceTree = SOURCE_ROOT; };
+		D3046ADA2EBF354800E1A497 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+SeaNavi.swift"; sourceTree = "<group>"; };
+		D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocationCoordinate2D+Distance.swift"; sourceTree = "<group>"; };
+		D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NauticalRoutePlanner.swift; sourceTree = "<group>"; };
+		D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingWaypoint.swift; sourceTree = "<group>"; };
+		D35EAC762EBF176E0093DFC9 /* SeaNavi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SeaNavi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D386513C2EC02FAA0013CA16 /* RouteSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteSummary.swift; sourceTree = "<group>"; };
+		D386513E2EC030350013CA16 /* DestinationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchView.swift; sourceTree = "<group>"; };
+		D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchViewModel.swift; sourceTree = "<group>"; };
+		D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingNavigationView.swift; sourceTree = "<group>"; };
+		D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKPolyline+Coordinates.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D35EAC782EBF176E0093DFC9 /* SeaNavi */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SeaNavi;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D35EAC732EBF176E0093DFC9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D3046AAD2EBF1F0F00E1A497 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */,
+				D3046AD62EBF349600E1A497 /* SplashView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		D3046AAF2EBF1F0F00E1A497 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		D3046AB12EBF1F0F00E1A497 /* Logbook */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AB02EBF1F0F00E1A497 /* LogbookListView.swift */,
+			);
+			path = Logbook;
+			sourceTree = "<group>";
+		};
+		D3046AB52EBF1F0F00E1A497 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AB22EBF1F0F00E1A497 /* NavigationDashboardView.swift */,
+				D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */,
+				D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */,
+			);
+			path = Navigation;
+			sourceTree = "<group>";
+		};
+		D3046AB72EBF1F0F00E1A497 /* Ports */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AB62EBF1F0F00E1A497 /* PortsListView.swift */,
+			);
+			path = Ports;
+			sourceTree = "<group>";
+		};
+		D3046AB92EBF1F0F00E1A497 /* Weather */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */,
+			);
+			path = Weather;
+			sourceTree = "<group>";
+		};
+		D3046ABA2EBF1F0F00E1A497 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				D38651442EC0305D0013CA16 /* Driving */,
+				D38651402EC030350013CA16 /* Destination */,
+				D3046ADB2EBF354800E1A497 /* Splash */,
+				D3046AB12EBF1F0F00E1A497 /* Logbook */,
+				D3046AB52EBF1F0F00E1A497 /* Navigation */,
+				D3046AB72EBF1F0F00E1A497 /* Ports */,
+				D3046AB92EBF1F0F00E1A497 /* Weather */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		D3046ABF2EBF1F0F00E1A497 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D386513C2EC02FAA0013CA16 /* RouteSummary.swift */,
+				D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */,
+				D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */,
+				D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */,
+				D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D3046AC12EBF1F0F00E1A497 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AC02EBF1F0F00E1A497 /* WeatherService.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+		D3046AC32EBF1F0F00E1A497 /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				D3046AC22EBF1F0F00E1A497 /* LocationService.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+		D3046AC42EBF1F0F00E1A497 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				D353FFF02EC05EF700F3CA59 /* Routing */,
+				D3046AC12EBF1F0F00E1A497 /* API */,
+				D3046AC32EBF1F0F00E1A497 /* Location */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D3046AC52EBF1F0F00E1A497 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D38651472EC035710013CA16 /* Extensions */,
+				D3046ADE2EBF357300E1A497 /* Design */,
+				D3046AAD2EBF1F0F00E1A497 /* App */,
+				D3046AAF2EBF1F0F00E1A497 /* Configuration */,
+				D3046ABA2EBF1F0F00E1A497 /* Features */,
+				D3046ABF2EBF1F0F00E1A497 /* Models */,
+				D3046AC42EBF1F0F00E1A497 /* Services */,
+			);
+			name = Sources;
+			path = ../Sources;
+			sourceTree = SOURCE_ROOT;
+		};
+		D3046ADB2EBF354800E1A497 /* Splash */ = {
+			isa = PBXGroup;
+			children = (
+				D3046ADA2EBF354800E1A497 /* SplashView.swift */,
+			);
+			path = Splash;
+			sourceTree = "<group>";
+		};
+		D3046ADE2EBF357300E1A497 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		D353FFF02EC05EF700F3CA59 /* Routing */ = {
+			isa = PBXGroup;
+			children = (
+				D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */,
+				D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */,
+			);
+			path = Routing;
+			sourceTree = "<group>";
+		};
+		D35EAC6D2EBF176E0093DFC9 = {
+			isa = PBXGroup;
+			children = (
+				D3046AD42EBF1FC500E1A497 /* Weather.plist */,
+				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
+				D35EAC772EBF176E0093DFC9 /* Products */,
+				D3046AC52EBF1F0F00E1A497 /* Sources */,
+			);
+			sourceTree = "<group>";
+		};
+		D35EAC772EBF176E0093DFC9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D35EAC762EBF176E0093DFC9 /* SeaNavi.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D38651402EC030350013CA16 /* Destination */ = {
+			isa = PBXGroup;
+			children = (
+				D386513E2EC030350013CA16 /* DestinationSearchView.swift */,
+				D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */,
+			);
+			path = Destination;
+			sourceTree = "<group>";
+		};
+		D38651442EC0305D0013CA16 /* Driving */ = {
+			isa = PBXGroup;
+			children = (
+				D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */,
+			);
+			path = Driving;
+			sourceTree = "<group>";
+		};
+		D38651472EC035710013CA16 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */,
+				D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D35EAC752EBF176E0093DFC9 /* SeaNavi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "SeaNavi" */;
+			buildPhases = (
+				D35EAC722EBF176E0093DFC9 /* Sources */,
+				D35EAC732EBF176E0093DFC9 /* Frameworks */,
+				D35EAC742EBF176E0093DFC9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
+			);
+			name = SeaNavi;
+			packageProductDependencies = (
+			);
+			productName = SeaNavi;
+			productReference = D35EAC762EBF176E0093DFC9 /* SeaNavi.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D35EAC6E2EBF176E0093DFC9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					D35EAC752EBF176E0093DFC9 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+				};
+			};
+			buildConfigurationList = D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "SeaNavi" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D35EAC6D2EBF176E0093DFC9;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D35EAC772EBF176E0093DFC9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D35EAC752EBF176E0093DFC9 /* SeaNavi */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D35EAC742EBF176E0093DFC9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D3046AD52EBF1FC500E1A497 /* Weather.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D35EAC722EBF176E0093DFC9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D3046AC62EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift in Sources */,
+				D3046AC72EBF1F0F00E1A497 /* WeatherSnapshot.swift in Sources */,
+				D3046ADC2EBF354800E1A497 /* SplashView.swift in Sources */,
+				D3046AD72EBF349600E1A497 /* SplashView.swift in Sources */,
+				D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */,
+				D3046AC82EBF1F0F00E1A497 /* TideReport.swift in Sources */,
+				D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */,
+				D3046AC92EBF1F0F00E1A497 /* WeatherConfiguration.swift in Sources */,
+				D353FFF12EC05EF700F3CA59 /* NauticalRoutePlanner.swift in Sources */,
+				D353FFF22EC05EF700F3CA59 /* RoutingWaypoint.swift in Sources */,
+				D3046ACA2EBF1F0F00E1A497 /* WeatherService.swift in Sources */,
+				D3046ACB2EBF1F0F00E1A497 /* SeaMapView.swift in Sources */,
+				D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */,
+				D386513D2EC02FAA0013CA16 /* RouteSummary.swift in Sources */,
+				D3046ACC2EBF1F0F00E1A497 /* VoyageLog.swift in Sources */,
+				D3046ACD2EBF1F0F00E1A497 /* PortsListView.swift in Sources */,
+				D3046ADF2EBF357300E1A497 /* Color+SeaNavi.swift in Sources */,
+				D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */,
+				D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */,
+				D3046ACE2EBF1F0F00E1A497 /* NavigationDashboardView.swift in Sources */,
+				D3046ACF2EBF1F0F00E1A497 /* TideWeatherCardView.swift in Sources */,
+				D3046AD02EBF1F0F00E1A497 /* SeaNaviApp.swift in Sources */,
+				D3046AD12EBF1F0F00E1A497 /* LogbookListView.swift in Sources */,
+				D3046AD22EBF1F0F00E1A497 /* Harbor.swift in Sources */,
+				D3046AD32EBF1F0F00E1A497 /* LocationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D35EAC7F2EBF176F0093DFC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D35EAC802EBF176F0093DFC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D35EAC822EBF176F0093DFC9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Navis;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		D35EAC832EBF176F0093DFC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Navis;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "SeaNavi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D35EAC7F2EBF176F0093DFC9 /* Debug */,
+				D35EAC802EBF176F0093DFC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "SeaNavi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D35EAC822EBF176F0093DFC9 /* Debug */,
+				D35EAC832EBF176F0093DFC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D35EAC6E2EBF176E0093DFC9 /* Project object */;
+}

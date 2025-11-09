@@ -2,46 +2,108 @@ import SwiftUI
 
 struct NavigationDashboardView: View {
     @ObservedObject var viewModel: NavigationDashboardViewModel
+    @State private var showDestinationSheet = false
+    @State private var showDrivingMode = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                GlassCard {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("航行マップ")
-                            .font(.title2.bold())
-                            .foregroundStyle(.white)
-                        SeaMapView(locationService: viewModel.locationService)
-                            .frame(height: 260)
-                        HStack {
-                            Label("ルートポイント \(viewModel.locationService.routePoints.count)", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                            Spacer()
-                            Label("追跡中", systemImage: "antenna.radiowaves.left.and.right")
-                                .foregroundStyle(.green)
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.deepSeaBlue,
+                    Color.deepSeaBlue.opacity(0.9)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            ScrollView {
+                LazyVStack(spacing: 24) {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("航行マップ")
+                                .font(.title2.bold())
+                                .foregroundStyle(.white)
+                            SeaMapView(locationService: viewModel.locationService)
+                                .frame(height: 260)
+                            HStack {
+                                Label("ルートポイント \(viewModel.locationService.routePoints.count)", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                                Spacer()
+                                Label("追跡中", systemImage: "antenna.radiowaves.left.and.right")
+                                    .foregroundStyle(.green)
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.8))
                         }
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.8))
                     }
+
+                    NavigationHUDView(
+                        eta: viewModel.etaText,
+                        distance: viewModel.distance,
+                        speed: viewModel.speed,
+                        heading: viewModel.heading,
+                        warning: viewModel.warningMessage
+                    )
+
+                    TideWeatherCardView(
+                        snapshot: viewModel.weatherSnapshot,
+                        tideReport: viewModel.tideReport
+                    )
+
+                    LogbookListView(logs: viewModel.voyageLogs)
+
+                    PortsListView(harbors: viewModel.harbors)
+
+                    Button {
+                        showDestinationSheet = true
+                    } label: {
+                        Label("目的地を設定してナビ開始", systemImage: "sailboat.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
                 }
-
-                NavigationHUDView(
-                    eta: viewModel.etaText,
-                    distance: viewModel.distance,
-                    speed: viewModel.speed,
-                    heading: viewModel.heading,
-                    warning: viewModel.warningMessage
-                )
-
-                TideWeatherCardView(snapshot: viewModel.weatherSnapshot)
-
-                LogbookListView(logs: viewModel.voyageLogs)
-
-                PortsListView(harbors: viewModel.harbors)
+                .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 32)
+                .safeAreaPadding(.top, 16)
+                .safeAreaPadding(.bottom, 24)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 32)
+            .scrollIndicators(.hidden)
         }
-        .background(Color.deepSeaBlue.opacity(0.95))
+        .sheet(isPresented: $showDestinationSheet) {
+            DestinationSearchView(
+                viewModel: DestinationSearchViewModel()
+            ) { harbor in
+                viewModel.startNavigation(to: harbor)
+                showDestinationSheet = false
+            }
+        }
+        .fullScreenCover(isPresented: $showDrivingMode) {
+            if let destination = viewModel.activeDestination,
+               let route = viewModel.routeSummary {
+                DrivingNavigationView(
+                    destination: destination,
+                    routeSummary: route,
+                    onExit: {
+                        viewModel.endNavigation()
+                        showDrivingMode = false
+                    },
+                    onChangeDestination: {
+                        showDrivingMode = false
+                        showDestinationSheet = true
+                    }
+                )
+            } else {
+                ProgressView().task {
+                    showDrivingMode = false
+                }
+            }
+        }
+        .onChange(of: viewModel.routeSummary != nil) { hasRoute in
+            showDrivingMode = hasRoute
+        }
     }
 }
 
@@ -54,15 +116,17 @@ struct NavigationHUDView: View {
 
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 16) {
-                    Label("ETA \(eta)", systemImage: "clock")
-                    Label(String(format: "%.1f nm", distance), systemImage: "arrow.triangle.turn.up.right.diamond")
-                    Label(String(format: "%.1f kn", speed), systemImage: "speedometer")
-                    Label(heading, systemImage: "safari")
+            VStack(alignment: .leading, spacing: 20) {
+                Grid(horizontalSpacing: 16, verticalSpacing: 12) {
+                    GridRow {
+                        HUDMetric(label: "ETA", value: eta, icon: "clock")
+                        HUDMetric(label: "距離", value: String(format: "%.1f nm", distance), icon: "arrow.triangle.turn.up.right.diamond")
+                    }
+                    GridRow {
+                        HUDMetric(label: "速度", value: String(format: "%.1f kn", speed), icon: "speedometer")
+                        HUDMetric(label: "方位", value: heading, icon: "safari")
+                    }
                 }
-                .font(.headline)
-                .foregroundStyle(.white)
 
                 if let warning {
                     HStack(spacing: 12) {
@@ -87,20 +151,40 @@ struct GlassCard<Content: View>: View {
     }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 28)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 28)
-                    .stroke(Color.white.opacity(0.15))
-            )
-            .shadow(color: .black.opacity(0.3), radius: 20, y: 12)
-            .overlay(alignment: .topLeading) {
-                content
-                    .padding(24)
-            }
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 28)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28)
+                        .stroke(Color.white.opacity(0.15))
+                )
+
+            content
+                .padding(24)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
     }
 }
 
-private extension Color {
-    static let deepSeaBlue = Color(red: 0.0, green: 0.2, blue: 0.31)
+private struct HUDMetric: View {
+    let label: String
+    let value: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(.white.opacity(0.9))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+                Text(value)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
