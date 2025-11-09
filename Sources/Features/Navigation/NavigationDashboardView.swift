@@ -80,6 +80,28 @@ struct NavigationDashboardView: View {
                 showDestinationSheet = false
             }
         }
+        .fullScreenCover(isPresented: $showRoutePreview) {
+            if let destination = viewModel.activeDestination,
+               let preview = viewModel.pendingRoute {
+                RoutePreviewView(
+                    destination: destination,
+                    routeSummary: preview,
+                    onCancel: {
+                        viewModel.cancelRoutePreview()
+                        showRoutePreview = false
+                    },
+                    onStart: {
+                        viewModel.beginDrivingNavigation()
+                        showRoutePreview = false
+                        showDrivingMode = true
+                    }
+                )
+            } else {
+                ProgressView().task {
+                    showRoutePreview = false
+                }
+            }
+        }
         .fullScreenCover(isPresented: $showDrivingMode) {
             if let destination = viewModel.activeDestination,
                let route = viewModel.routeSummary {
@@ -100,6 +122,9 @@ struct NavigationDashboardView: View {
                     showDrivingMode = false
                 }
             }
+        }
+        .onChange(of: viewModel.pendingRoute != nil) { hasPreview in
+            showRoutePreview = hasPreview
         }
         .onChange(of: viewModel.routeSummary != nil) { hasRoute in
             showDrivingMode = hasRoute

@@ -17,6 +17,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var activeDestination: Harbor?
     @Published var routeSummary: RouteSummary?
     @Published var isGeneratingRoute = false
+    @Published var pendingRoute: RouteSummary?
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -44,6 +45,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     func startNavigation(to harbor: Harbor) {
         activeDestination = harbor
         routeSummary = nil
+        pendingRoute = nil
         isGeneratingRoute = true
         Task { await generateRoute(to: harbor) }
     }
@@ -51,6 +53,19 @@ final class NavigationDashboardViewModel: ObservableObject {
     func endNavigation() {
         activeDestination = nil
         routeSummary = nil
+        pendingRoute = nil
+        isGeneratingRoute = false
+    }
+
+    func beginDrivingNavigation() {
+        guard let pendingRoute else { return }
+        routeSummary = pendingRoute
+        self.pendingRoute = nil
+    }
+
+    func cancelRoutePreview() {
+        pendingRoute = nil
+        activeDestination = nil
         isGeneratingRoute = false
     }
 
@@ -122,7 +137,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         let etaMinutes = Int(distanceMeters / (cruisingSpeedKnots * 0.514444) / 60)
 
         await MainActor.run {
-            routeSummary = RouteSummary(
+            pendingRoute = RouteSummary(
                 totalDistance: distanceMeters / 1852.0,
                 etaMinutes: max(etaMinutes, harbor.etaMinutes),
                 primaryInstruction: "航路に沿って進む",
