@@ -14,6 +14,9 @@ struct DestinationSearchView: View {
                     .disableAutocorrection(true)
 
                 List {
+                    if viewModel.isSearching {
+                        ProgressView("検索中...")
+                    }
                     Section("おすすめルート") {
                         ForEach(viewModel.results) { harbor in
                             Button {

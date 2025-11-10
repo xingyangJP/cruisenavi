@@ -1,0 +1,9 @@
+# Xcode / Swift defaults
+DerivedData/
+build/
+*.xcworkspace
+xcuserdata/
+
+# Secrets
+Config/Weather.plist
+API.md

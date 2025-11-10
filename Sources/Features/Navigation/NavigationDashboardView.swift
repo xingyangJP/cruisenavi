@@ -4,6 +4,7 @@ struct NavigationDashboardView: View {
     @ObservedObject var viewModel: NavigationDashboardViewModel
     @State private var showDestinationSheet = false
     @State private var showDrivingMode = false
+    @State private var showRoutePreview = false
 
     var body: some View {
         ZStack {
@@ -61,9 +62,9 @@ struct NavigationDashboardView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
-                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
-                }
-                .foregroundStyle(.white)
+                            .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
+                    }
+                    .foregroundStyle(.white)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 32)
@@ -74,10 +75,11 @@ struct NavigationDashboardView: View {
         }
         .sheet(isPresented: $showDestinationSheet) {
             DestinationSearchView(
-                viewModel: DestinationSearchViewModel()
+                viewModel: DestinationSearchViewModel(locationService: viewModel.locationService)
             ) { harbor in
                 viewModel.startNavigation(to: harbor)
                 showDestinationSheet = false
+                showRoutePreview = true
             }
         }
         .fullScreenCover(isPresented: $showRoutePreview) {
@@ -97,9 +99,7 @@ struct NavigationDashboardView: View {
                     }
                 )
             } else {
-                ProgressView().task {
-                    showRoutePreview = false
-                }
+                RoutePreviewLoadingView()
             }
         }
         .fullScreenCover(isPresented: $showDrivingMode) {
@@ -124,7 +124,9 @@ struct NavigationDashboardView: View {
             }
         }
         .onChange(of: viewModel.pendingRoute != nil) { hasPreview in
-            showRoutePreview = hasPreview
+            if hasPreview {
+                showDestinationSheet = false
+            }
         }
         .onChange(of: viewModel.routeSummary != nil) { hasRoute in
             showDrivingMode = hasRoute

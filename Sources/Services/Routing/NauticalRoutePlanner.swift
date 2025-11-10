@@ -2,23 +2,63 @@ import Foundation
 import CoreLocation
 
 final class NauticalRoutePlanner {
-    private let candidateWaypoints: [RoutingWaypoint] = [
-        RoutingWaypoint(coordinate: CLLocationCoordinate2D(latitude: 35.363, longitude: 139.65), depth: 20, name: "Yokohama Offshore"),
-        RoutingWaypoint(coordinate: CLLocationCoordinate2D(latitude: 35.30, longitude: 139.70), depth: 35, name: "Tokyo Bay South"),
-        RoutingWaypoint(coordinate: CLLocationCoordinate2D(latitude: 35.25, longitude: 139.74), depth: 45, name: "Kannon Reef"),
-        RoutingWaypoint(coordinate: CLLocationCoordinate2D(latitude: 35.20, longitude: 139.80), depth: 30, name: "Uraga Channel"),
-        RoutingWaypoint(coordinate: CLLocationCoordinate2D(latitude: 35.18, longitude: 139.82), depth: 25, name: "Kurihama Marker")
+    private struct LandBox {
+        let minLat: Double
+        let maxLat: Double
+        let minLon: Double
+        let maxLon: Double
+
+        func contains(_ coordinate: CLLocationCoordinate2D) -> Bool {
+            coordinate.latitude >= minLat && coordinate.latitude <= maxLat &&
+            coordinate.longitude >= minLon && coordinate.longitude <= maxLon
+        }
+    }
+
+    private let landBoxes: [LandBox] = [
+        LandBox(minLat: 35.30, maxLat: 35.45, minLon: 139.60, maxLon: 139.70), // Yokohama city
+        LandBox(minLat: 35.20, maxLat: 35.32, minLon: 139.70, maxLon: 139.85), // Bay coastal area
+        LandBox(minLat: 35.15, maxLat: 35.25, minLon: 139.80, maxLon: 139.90)
+    ]
+
+    private let coastalNodes: [CLLocationCoordinate2D] = [
+        CLLocationCoordinate2D(latitude: 35.35, longitude: 139.72),
+        CLLocationCoordinate2D(latitude: 35.29, longitude: 139.76),
+        CLLocationCoordinate2D(latitude: 35.24, longitude: 139.78),
+        CLLocationCoordinate2D(latitude: 35.18, longitude: 139.82),
+        CLLocationCoordinate2D(latitude: 35.14, longitude: 139.85)
     ]
 
     func buildRoute(from start: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) -> [CLLocationCoordinate2D] {
-        // simple fallback: start, intermediate, destination
-        let bestWaypoint = candidateWaypoints.min { $0.coordinate.distance(to: destination) < $1.coordinate.distance(to: destination) }
         var route: [CLLocationCoordinate2D] = [start]
-        if let waypoint = bestWaypoint {
-            route.append(waypoint.coordinate)
+        var current = start
+
+        if crossesLand(from: current, to: destination) {
+            if let detour = coastalNode(near: destination) {
+                route.append(detour)
+                current = detour
+            }
         }
+
         route.append(destination)
         return smooth(route)
+    }
+
+    private func crossesLand(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> Bool {
+        for box in landBoxes {
+            if box.contains(start) || box.contains(end) { return true }
+            let minLat = min(start.latitude, end.latitude)
+            let maxLat = max(start.latitude, end.latitude)
+            let minLon = min(start.longitude, end.longitude)
+            let maxLon = max(start.longitude, end.longitude)
+            if maxLat >= box.minLat && minLat <= box.maxLat && maxLon >= box.minLon && minLon <= box.maxLon {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func coastalNode(near destination: CLLocationCoordinate2D) -> CLLocationCoordinate2D? {
+        coastalNodes.min { $0.distance(to: destination) < $1.distance(to: destination) }
     }
 
     private func smooth(_ coordinates: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {

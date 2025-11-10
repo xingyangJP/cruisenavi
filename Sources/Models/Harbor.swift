@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import MapKit
 
 struct Harbor: Identifiable {
     let id: UUID
@@ -9,6 +10,16 @@ struct Harbor: Identifiable {
     let restrictions: [String]
     let distance: Double
     let etaMinutes: Int
+
+    init(id: UUID = UUID(), name: String, coordinate: CLLocationCoordinate2D, facilities: [String], restrictions: [String], distance: Double, etaMinutes: Int) {
+        self.id = id
+        self.name = name
+        self.coordinate = coordinate
+        self.facilities = facilities
+        self.restrictions = restrictions
+        self.distance = distance
+        self.etaMinutes = etaMinutes
+    }
 
     static let sample: [Harbor] = [
         Harbor(
@@ -30,4 +41,21 @@ struct Harbor: Identifiable {
             etaMinutes: 19
         )
     ]
+}
+
+extension Harbor {
+    init(mapItem: MKMapItem, from origin: CLLocationCoordinate2D) {
+        let coordinate = mapItem.placemark.coordinate
+        let distanceMeters = coordinate.distance(to: origin)
+        let distanceNm = distanceMeters / 1852.0
+        let eta = max(Int(distanceMeters / (12.0 * 0.514444) / 60), 5)
+        self.init(
+            name: mapItem.name ?? "未命名の港",
+            coordinate: coordinate,
+            facilities: mapItem.pointOfInterestCategory == .marina ? ["Fuel", "Dock"] : ["Coast"] ,
+            restrictions: [],
+            distance: distanceNm,
+            etaMinutes: eta
+        )
+    }
 }

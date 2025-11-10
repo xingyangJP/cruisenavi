@@ -23,7 +23,6 @@
 		D3046AD32EBF1F0F00E1A497 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AC22EBF1F0F00E1A497 /* LocationService.swift */; };
 		D3046AD52EBF1FC500E1A497 /* Weather.plist in Resources */ = {isa = PBXBuildFile; fileRef = D3046AD42EBF1FC500E1A497 /* Weather.plist */; };
 		D3046AD72EBF349600E1A497 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AD62EBF349600E1A497 /* SplashView.swift */; };
-		D3046ADC2EBF354800E1A497 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ADA2EBF354800E1A497 /* SplashView.swift */; };
 		D3046ADF2EBF357300E1A497 /* Color+SeaNavi.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */; };
 		D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */; };
 		D353FFF12EC05EF700F3CA59 /* NauticalRoutePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */; };
@@ -32,6 +31,8 @@
 		D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513E2EC030350013CA16 /* DestinationSearchView.swift */; };
 		D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */; };
 		D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */; };
+		D3A4F0012EC11F4E005AD04B /* RoutePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */; };
+		D3A4F0052EC1302C005AD04B /* RoutePreviewLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */; };
 		D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,7 +53,6 @@
 		D3046AC22EBF1F0F00E1A497 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		D3046AD42EBF1FC500E1A497 /* Weather.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Weather.plist; path = ../Config/Weather.plist; sourceTree = SOURCE_ROOT; };
 		D3046AD62EBF349600E1A497 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SplashView.swift; path = ../Sources/Features/Splash/SplashView.swift; sourceTree = SOURCE_ROOT; };
-		D3046ADA2EBF354800E1A497 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+SeaNavi.swift"; sourceTree = "<group>"; };
 		D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocationCoordinate2D+Distance.swift"; sourceTree = "<group>"; };
 		D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NauticalRoutePlanner.swift; sourceTree = "<group>"; };
@@ -62,6 +62,8 @@
 		D386513E2EC030350013CA16 /* DestinationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchView.swift; sourceTree = "<group>"; };
 		D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchViewModel.swift; sourceTree = "<group>"; };
 		D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingNavigationView.swift; sourceTree = "<group>"; };
+		D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewView.swift; sourceTree = "<group>"; };
+		D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewLoadingView.swift; sourceTree = "<group>"; };
 		D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKPolyline+Coordinates.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -140,7 +142,7 @@
 			children = (
 				D38651442EC0305D0013CA16 /* Driving */,
 				D38651402EC030350013CA16 /* Destination */,
-				D3046ADB2EBF354800E1A497 /* Splash */,
+				D3046AD62EBF349600E1A497 /* SplashView.swift */,
 				D3046AB12EBF1F0F00E1A497 /* Logbook */,
 				D3046AB52EBF1F0F00E1A497 /* Navigation */,
 				D3046AB72EBF1F0F00E1A497 /* Ports */,
@@ -202,14 +204,6 @@
 			path = ../Sources;
 			sourceTree = SOURCE_ROOT;
 		};
-		D3046ADB2EBF354800E1A497 /* Splash */ = {
-			isa = PBXGroup;
-			children = (
-				D3046ADA2EBF354800E1A497 /* SplashView.swift */,
-			);
-			path = Splash;
-			sourceTree = "<group>";
-		};
 		D3046ADE2EBF357300E1A497 /* Design */ = {
 			isa = PBXGroup;
 			children = (
@@ -258,6 +252,8 @@
 			isa = PBXGroup;
 			children = (
 				D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */,
+				D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */,
+				D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */,
 			);
 			path = Driving;
 			sourceTree = "<group>";
@@ -348,8 +344,9 @@
 			files = (
 				D3046AC62EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift in Sources */,
 				D3046AC72EBF1F0F00E1A497 /* WeatherSnapshot.swift in Sources */,
-				D3046ADC2EBF354800E1A497 /* SplashView.swift in Sources */,
 				D3046AD72EBF349600E1A497 /* SplashView.swift in Sources */,
+				D3A4F0012EC11F4E005AD04B /* RoutePreviewView.swift in Sources */,
+				D3A4F0052EC1302C005AD04B /* RoutePreviewLoadingView.swift in Sources */,
 				D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */,
 				D3046AC82EBF1F0F00E1A497 /* TideReport.swift in Sources */,
 				D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */,

@@ -29,8 +29,8 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     init(
         locationService: LocationService,
-        weatherService: WeatherService = MockWeatherService(),
-        tideService: TideService = MockTideService()
+        weatherService: WeatherService,
+        tideService: TideService
     ) {
         self.locationService = locationService
         self.weatherService = weatherService

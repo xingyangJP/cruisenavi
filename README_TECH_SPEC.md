@@ -33,9 +33,9 @@ Navis（iOS航行ナビアプリ）の実装・運用に必要な技術要件を
 
 ## 4. 主要機能別技術仕様
 
-### 4.1 航行ナビゲーション
-- センサー: CoreLocation (1s interval), CoreMotion (傾きで背景パララックス).
-- ルーティング: GPS現在地から最寄りの港・海岸ライン（MapKitの海岸線 or 事前定義ノード）を起点に、浅瀬ポリゴン (GeoJSON) を除外した海上ルートを生成。ETAは `CLGeodesic` と潮流補正で算出。
+- **センサー**: CoreLocation (1s interval), CoreMotion (傾きで背景パララックス)
+- **ルーティング**: ENC / GeoJSON から抽出した海上ノード／航路チャネルをグラフ化し、A* で最短海上ルートを算出。現在地 → 最寄り港/海岸ノード → 目的地の順で接続し、陸地ポリゴンや浅瀬ポリゴンはヒューリスティックで回避。ETA は `CLGeodesic` と潮流補正で算出。
+- **ルートプレビュー**: 目的地決定後に全航路をフルスクリーンで表示し、スタート地点とゴールカードを提示。ユーザーが「スタート」を押すと Driving HUD へ遷移。
 - UI: Home画面上部に NavigationHUD（GlassCard）を固定表示、Live Activities へ速度/ETAを更新。
 - Map: MapKit Overlays + Custom Renderer で浅瀬/航行禁止区域を描画。進行方向は `MKAnnotation` の heading を利用。
 

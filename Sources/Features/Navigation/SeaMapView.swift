@@ -35,7 +35,7 @@ struct SeaMapView: View {
             }
         }
         .mapStyle(.hybrid(elevation: .realistic))
-        .onChange(of: locationService.currentLocation) { newValue in
+        .onChange(of: locationService.currentLocation) { _, newValue in
             guard let coordinate = newValue?.coordinate else { return }
             cameraPosition = .region(
                 MKCoordinateRegion(
