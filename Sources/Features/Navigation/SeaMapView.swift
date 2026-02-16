@@ -3,10 +3,13 @@ import MapKit
 
 struct SeaMapView: View {
     @ObservedObject var locationService: LocationService
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 35.6225, longitude: 139.79),
-            span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+    @State private var cameraPosition: MapCameraPosition = .userLocation(
+        followsHeading: false,
+        fallback: .region(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503),
+                span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+            )
         )
     )
 
@@ -16,9 +19,9 @@ struct SeaMapView: View {
                 Annotation("現在地", coordinate: coordinate) {
                     ZStack {
                         Circle()
-                            .fill(Color.cyan.opacity(0.3))
+                            .fill(Color.aquaTeal.opacity(0.25))
                             .frame(width: 32, height: 32)
-                        Image(systemName: "sailboat.fill")
+                        Image(systemName: "bicycle")
                             .foregroundColor(.white)
                     }
                     .accessibilityLabel("現在位置")
@@ -34,13 +37,15 @@ struct SeaMapView: View {
                     .stroke(.red.opacity(0.4), lineWidth: 1)
             }
         }
-        .mapStyle(.hybrid(elevation: .realistic))
-        .onChange(of: locationService.currentLocation) { _, newValue in
-            guard let coordinate = newValue?.coordinate else { return }
-            cameraPosition = .region(
-                MKCoordinateRegion(
-                    center: coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        .mapStyle(.standard(elevation: .realistic))
+        .onChange(of: locationService.currentLocation) { _, _ in
+            cameraPosition = .userLocation(
+                followsHeading: false,
+                fallback: .region(
+                    MKCoordinateRegion(
+                        center: CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503),
+                        span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+                    )
                 )
             )
         }
@@ -52,7 +57,7 @@ struct SeaMapView: View {
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 30)
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                .stroke(Color.citrusBorder, lineWidth: 1)
         )
         .shadow(radius: 20, y: 10)
     }

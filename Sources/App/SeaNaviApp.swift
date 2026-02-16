@@ -7,22 +7,24 @@ struct SeaNaviApp: App {
     @StateObject private var dashboardViewModel: NavigationDashboardViewModel
 
     init() {
-        let service = LocationService()
+        let enableMockFallback = ProcessInfo.processInfo.environment["ENABLE_MOCK_LOCATION"] == "1"
+        let enableMockWeather = ProcessInfo.processInfo.environment["ENABLE_MOCK_WEATHER"] == "1"
+        let service = LocationService(allowMockFallback: enableMockFallback)
         _locationService = StateObject(wrappedValue: service)
 
-        let weatherService: WeatherService
+        var weatherProviders: [WeatherService] = [AppleWeatherKitService()]
         if let configuration = WeatherConfigurationLoader.load() {
-            weatherService = WeatherAPIClient(configuration: configuration)
-        } else {
-            weatherService = MockWeatherService()
+            weatherProviders.append(WeatherAPIClient(configuration: configuration))
         }
-
-        let tideService: TideService = TideAPIClient()
+        if enableMockWeather {
+            weatherProviders.append(MockWeatherService())
+        }
+        let weatherService = ChainedWeatherService(providers: weatherProviders)
 
         let viewModel = NavigationDashboardViewModel(
             locationService: service,
             weatherService: weatherService,
-            tideService: tideService
+            rideLogSyncService: HealthWorkoutSyncService()
         )
         _dashboardViewModel = StateObject(wrappedValue: viewModel)
     }
@@ -30,7 +32,6 @@ struct SeaNaviApp: App {
     var body: some Scene {
         WindowGroup {
             RootContainerView(viewModel: dashboardViewModel)
-                .preferredColorScheme(.dark)
         }
     }
 }

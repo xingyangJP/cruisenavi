@@ -4,15 +4,45 @@ import Combine
 
 @MainActor
 final class LocationService: NSObject, ObservableObject {
+    enum TrackingMode {
+        case gps
+        case mockPlayback
+        case unavailable
+
+        var label: String {
+            switch self {
+            case .gps:
+                return "実GPS"
+            case .mockPlayback:
+                return "フォールバック"
+            case .unavailable:
+                return "位置情報なし"
+            }
+        }
+
+        var isActive: Bool {
+            switch self {
+            case .gps, .mockPlayback:
+                return true
+            case .unavailable:
+                return false
+            }
+        }
+    }
+
     @Published var currentLocation: CLLocation?
     @Published var heading: CLHeading?
     @Published var routePoints: [CLLocationCoordinate2D] = []
+    @Published var trackingMode: TrackingMode = .unavailable
+    @Published var trackingStatusMessage: String = "位置情報の取得を待機中"
 
     private let locationManager = CLLocationManager()
     private var playbackTimer: AnyCancellable?
     private var playbackIndex: Int = 0
+    private let allowMockFallback: Bool
 
-    override init() {
+    init(allowMockFallback: Bool = false) {
+        self.allowMockFallback = allowMockFallback
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
@@ -26,14 +56,16 @@ final class LocationService: NSObject, ObservableObject {
             locationManager.requestWhenInUseAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
             startAuthorizedUpdates()
-        default:
-            break
+        case .denied, .restricted:
+            handleUnavailable(reason: "位置情報の許可が必要です")
+        @unknown default:
+            handleUnavailable(reason: "位置情報状態を判定できません")
         }
     }
 
     func startTracking() {
         guard CLLocationManager.locationServicesEnabled() else {
-            startMockPlayback()
+            handleNoLocationService(reason: "端末の位置情報サービスが無効です")
             return
         }
 
@@ -42,10 +74,12 @@ final class LocationService: NSObject, ObservableObject {
             startAuthorizedUpdates()
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
+            trackingMode = .unavailable
+            trackingStatusMessage = "位置情報の許可待ち"
         case .denied, .restricted:
-            startMockPlayback()
+            handleNoLocationService(reason: "位置情報の許可がありません")
         @unknown default:
-            startMockPlayback()
+            handleNoLocationService(reason: "位置情報状態を判定できません")
         }
     }
 
@@ -53,11 +87,15 @@ final class LocationService: NSObject, ObservableObject {
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
         playbackTimer?.cancel()
+        playbackTimer = nil
     }
 
     func currentCoordinateOrDefault() -> CLLocationCoordinate2D {
         if let coordinate = currentLocation?.coordinate {
             return coordinate
+        }
+        if let managerCoordinate = locationManager.location?.coordinate {
+            return managerCoordinate
         }
         if let last = routePoints.last {
             return last
@@ -66,11 +104,34 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     private func startAuthorizedUpdates() {
+        playbackTimer?.cancel()
+        playbackTimer = nil
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
+        locationManager.requestLocation()
+        trackingMode = .gps
+        trackingStatusMessage = "GPSアクティブ"
+    }
+
+    private func handleNoLocationService(reason: String) {
+        if allowMockFallback {
+            startMockPlayback()
+        } else {
+            handleUnavailable(reason: reason)
+        }
+    }
+
+    private func handleUnavailable(reason: String) {
+        stopTracking()
+        trackingMode = .unavailable
+        trackingStatusMessage = reason
     }
 
     private func startMockPlayback() {
+        stopTracking()
+        trackingMode = .mockPlayback
+        trackingStatusMessage = "モック位置で追跡中"
+
         let mockPoints = MockRouteProvider.tokyoBayRoute
         playbackTimer = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
@@ -92,10 +153,21 @@ extension LocationService: CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         currentLocation = location
         routePoints.append(location.coordinate)
+        trackingMode = .gps
+        trackingStatusMessage = "GPSアクティブ"
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         heading = newHeading
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        #if DEBUG
+        print("Location manager error:", error)
+        #endif
+        if trackingMode == .gps {
+            trackingStatusMessage = "GPS更新エラー"
+        }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -103,12 +175,13 @@ extension LocationService: CLLocationManagerDelegate {
         case .authorizedAlways, .authorizedWhenInUse:
             startAuthorizedUpdates()
         case .denied, .restricted:
-            stopTracking()
-            startMockPlayback()
+            handleNoLocationService(reason: "位置情報の許可がありません")
         case .notDetermined:
-            break
+            trackingMode = .unavailable
+            trackingStatusMessage = "位置情報の許可待ち"
         @unknown default:
-            break
+            trackingMode = .unavailable
+            trackingStatusMessage = "位置情報状態を判定できません"
         }
     }
 }

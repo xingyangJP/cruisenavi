@@ -1,4 +1,6 @@
 import Foundation
+import CoreLocation
+import WeatherKit
 
 enum APIError: Error {
     case invalidURL
@@ -11,13 +13,95 @@ protocol WeatherService {
     func fetchSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot
 }
 
-protocol TideService {
-    func fetchTide(for coordinate: CoordinateReference) async throws -> TideReport
-}
-
 struct CoordinateReference {
     let latitude: Double
     let longitude: Double
+}
+
+struct ChainedWeatherService: WeatherService {
+    let providers: [WeatherService]
+
+    func fetchSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
+        var lastError: Error = APIError.unknown
+        for provider in providers {
+            do {
+                return try await provider.fetchSnapshot(for: coordinate)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+}
+
+final class AppleWeatherKitService: WeatherService {
+    func fetchSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let weather = try await WeatherKit.WeatherService.shared.weather(for: location)
+        let current = weather.currentWeather
+        let windSpeed = current.wind.speed.converted(to: .metersPerSecond).value
+        let windDirection = current.wind.direction.converted(to: .degrees).value
+        let condition = weatherConditionText(current.condition)
+        let roadRisk = roadRiskScore(condition: condition, windSpeed: windSpeed)
+        let precipitationStartMinutes = nextPrecipitationStartMinutes(from: weather)
+
+        let warning: WeatherSnapshot.WarningLevel
+        if windSpeed >= 20 || roadRisk >= 2.0 {
+            warning = .warning
+        } else if windSpeed >= 12 || roadRisk >= 1.2 {
+            warning = .advisory
+        } else {
+            warning = .none
+        }
+
+        return WeatherSnapshot(
+            timestamp: current.date,
+            condition: condition,
+            windSpeed: windSpeed,
+            windDirection: windDirection,
+            roadRisk: roadRisk,
+            precipitationStartMinutes: precipitationStartMinutes,
+            warning: warning
+        )
+    }
+
+    private func roadRiskScore(condition: String, windSpeed: Double) -> Double {
+        let rainLike = ["雨", "雷", "雪", "霧", "みぞれ"]
+        let isWet = rainLike.contains { condition.contains($0) }
+        let base = isWet ? 1.2 : 0.6
+        return min(2.5, base + (windSpeed / 20.0))
+    }
+
+    private func weatherConditionText(_ condition: WeatherCondition) -> String {
+        switch condition {
+        case .clear:
+            return "晴れ"
+        case .cloudy, .mostlyCloudy, .partlyCloudy:
+            return "くもり"
+        case .drizzle, .rain, .heavyRain, .isolatedThunderstorms, .thunderstorms, .strongStorms:
+            return "雨"
+        case .snow, .flurries, .sleet, .freezingRain, .wintryMix, .blizzard, .blowingSnow:
+            return "雪"
+        case .foggy, .haze, .smoky:
+            return "霧"
+        default:
+            return "不明"
+        }
+    }
+
+    private func nextPrecipitationStartMinutes(from weather: Weather) -> Int? {
+        let now = Date()
+        let rainConditions: Set<WeatherCondition> = [
+            .drizzle, .rain, .heavyRain, .isolatedThunderstorms, .thunderstorms, .strongStorms
+        ]
+
+        if let nextRain = weather.hourlyForecast.forecast
+            .first(where: { $0.date > now && rainConditions.contains($0.condition) }) {
+            let minutes = Int(nextRain.date.timeIntervalSince(now) / 60.0)
+            return max(minutes, 0)
+        }
+        return nil
+    }
 }
 
 final class WeatherAPIClient: WeatherService {
@@ -30,6 +114,14 @@ final class WeatherAPIClient: WeatherService {
     }
 
     func fetchSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
+        do {
+            return try await fetchOneCallSnapshot(for: coordinate)
+        } catch {
+            return try await fetchCurrentWeatherSnapshot(for: coordinate)
+        }
+    }
+
+    private func fetchOneCallSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
         guard var components = URLComponents(url: configuration.baseURL, resolvingAgainstBaseURL: false) else {
             throw APIError.invalidURL
         }
@@ -53,106 +145,41 @@ final class WeatherAPIClient: WeatherService {
 
         do {
             let payload = try JSONDecoder().decode(OneCallResponse.self, from: data)
-            let reference = payload.hourly.first ?? payload.current
-            let next = payload.hourly.dropFirst().first ?? reference
-
-            let tideHeightMeters = reference.derivedSeaLevel
-            let nextHeight = next.derivedSeaLevel
-            let tideState: String
-            if nextHeight > tideHeightMeters + 0.05 {
-                tideState = "Rising"
-            } else if nextHeight + 0.05 < tideHeightMeters {
-                tideState = "Falling"
-            } else {
-                tideState = "Slack"
-            }
+            let current = payload.hourly.first ?? payload.current
 
             let warning: WeatherSnapshot.WarningLevel
-            if reference.windSpeed >= 20 || (reference.waveHeight ?? 0) >= 2 {
+            if current.windSpeed >= 20 || (current.waveHeight ?? 0) >= 2 {
                 warning = .warning
-            } else if reference.windSpeed >= 12 || (reference.waveHeight ?? 0) >= 1.2 {
+            } else if current.windSpeed >= 12 || (current.waveHeight ?? 0) >= 1.2 {
                 warning = .advisory
             } else {
                 warning = .none
             }
 
             return WeatherSnapshot(
-                timestamp: Date(timeIntervalSince1970: reference.timestamp),
-                tideHeight: tideHeightMeters,
-                tideState: tideState,
-                windSpeed: reference.windSpeed,
-                windDirection: reference.windDirection,
-                waveHeight: reference.waveHeight ?? 0.6,
+                timestamp: Date(timeIntervalSince1970: current.timestamp),
+                condition: current.condition ?? "不明",
+                windSpeed: current.windSpeed,
+                windDirection: current.windDirection,
+                roadRisk: current.waveHeight ?? 0.6,
+                precipitationStartMinutes: current.precipitationStartMinutes,
                 warning: warning
             )
         } catch {
             throw APIError.decoding
         }
     }
-}
 
-private extension WeatherAPIClient {
-    struct OneCallResponse: Decodable {
-        struct Entry: Decodable {
-            let dt: TimeInterval
-            let wind_speed: Double
-            let wind_deg: Double
-            let sea_level: Double?
-            let pressure: Double?
-            let waves: Waves?
-
-            struct Waves: Decodable {
-                let wave_height: Double?
-            }
-
-            var timestamp: TimeInterval { dt }
-            var windSpeed: Double { wind_speed }
-            var windDirection: Double { wind_deg }
-            var waveHeight: Double? { waves?.wave_height }
-            var derivedSeaLevel: Double {
-                if let sea = sea_level {
-                    return sea / 100.0
-                } else if let pressure = pressure {
-                    return pressure / 100.0
-                } else {
-                    return 0.0
-                }
-            }
-        }
-
-        let current: Entry
-        let hourly: [Entry]
-    }
-}
-
-final class TideAPIClient: TideService {
-    private let session: URLSession
-    private let baseURL: URL
-    private let decoder = JSONDecoder()
-    private let isoFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
-    init(
-        baseURL: URL = URL(string: "https://marine-api.open-meteo.com/v1/marine")!,
-        session: URLSession = .shared
-    ) {
-        self.baseURL = baseURL
-        self.session = session
-    }
-
-    func fetchTide(for coordinate: CoordinateReference) async throws -> TideReport {
-        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+    private func fetchCurrentWeatherSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
+        guard
+            var components = URLComponents(string: "https://api.openweathermap.org/data/2.5/weather")
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [
-            URLQueryItem(name: "latitude", value: "\(coordinate.latitude)"),
-            URLQueryItem(name: "longitude", value: "\(coordinate.longitude)"),
-            URLQueryItem(name: "hourly", value: "tide_height"),
-            URLQueryItem(name: "length", value: "2"),
-            URLQueryItem(name: "timezone", value: "UTC")
+            URLQueryItem(name: "lat", value: "\(coordinate.latitude)"),
+            URLQueryItem(name: "lon", value: "\(coordinate.longitude)"),
+            URLQueryItem(name: "appid", value: configuration.apiKey)
         ]
         guard let url = components.url else { throw APIError.invalidURL }
 
@@ -168,43 +195,126 @@ final class TideAPIClient: TideService {
         }
 
         do {
-            let payload = try decoder.decode(OpenMeteoTideResponse.self, from: data)
-            guard
-                let firstHeight = payload.hourly.tide_height?.first,
-                let firstTimeString = payload.hourly.time.first,
-                let timestamp = isoFormatter.date(from: firstTimeString) ?? ISO8601DateFormatter().date(from: firstTimeString)
-            else {
-                throw APIError.decoding
-            }
+            let payload = try JSONDecoder().decode(CurrentWeatherResponse.self, from: data)
+            let current = payload.current
 
-            let nextHeight = payload.hourly.tide_height?.dropFirst().first ?? firstHeight
-            let state: String
-            if nextHeight > firstHeight + 0.05 {
-                state = "Rising"
-            } else if nextHeight + 0.05 < firstHeight {
-                state = "Falling"
+            let warning: WeatherSnapshot.WarningLevel
+            if current.windSpeed >= 20 || payload.roadRisk >= 2 {
+                warning = .warning
+            } else if current.windSpeed >= 12 || payload.roadRisk >= 1.2 {
+                warning = .advisory
             } else {
-                state = "Slack"
+                warning = .none
             }
 
-            return TideReport(
-                timestamp: timestamp,
-                height: firstHeight,
-                state: state,
-                source: "Open-Meteo"
+            return WeatherSnapshot(
+                timestamp: Date(timeIntervalSince1970: current.timestamp),
+                condition: payload.localizedCondition,
+                windSpeed: current.windSpeed,
+                windDirection: current.windDirection,
+                roadRisk: payload.roadRisk,
+                precipitationStartMinutes: nil,
+                warning: warning
             )
         } catch {
             throw APIError.decoding
         }
     }
+}
 
-    private struct OpenMeteoTideResponse: Decodable {
-        struct Hourly: Decodable {
-            let time: [String]
-            let tide_height: [Double]?
+private extension WeatherAPIClient {
+    struct OneCallResponse: Decodable {
+        struct WeatherElement: Decodable {
+            let main: String?
+            let description: String?
+        }
+        struct Entry: Decodable {
+            let dt: TimeInterval
+            let wind_speed: Double
+            let wind_deg: Double
+            let waves: Waves?
+            let weather: [WeatherElement]?
+            let pop: Double?
+
+            struct Waves: Decodable {
+                let wave_height: Double?
+            }
+
+            var timestamp: TimeInterval { dt }
+            var windSpeed: Double { wind_speed }
+            var windDirection: Double { wind_deg }
+            var waveHeight: Double? { waves?.wave_height }
+            var condition: String? { weather?.first?.description ?? weather?.first?.main }
+            var precipitationStartMinutes: Int? {
+                guard let pop, pop >= 0.4 else { return nil }
+                return 0
+            }
         }
 
-        let hourly: Hourly
+        let current: Entry
+        let hourly: [Entry]
+    }
+
+    struct CurrentWeatherResponse: Decodable {
+        struct Weather: Decodable {
+            let main: String
+            let description: String
+        }
+
+        struct Wind: Decodable {
+            let speed: Double
+            let deg: Double?
+        }
+
+        struct Entry {
+            let timestamp: TimeInterval
+            let windSpeed: Double
+            let windDirection: Double
+        }
+
+        let dt: TimeInterval
+        let weather: [Weather]
+        let wind: Wind
+
+        var current: Entry {
+            Entry(
+                timestamp: dt,
+                windSpeed: wind.speed,
+                windDirection: wind.deg ?? 0
+            )
+        }
+
+        var condition: String {
+            weather.first?.description ?? weather.first?.main ?? "不明"
+        }
+
+        var localizedCondition: String {
+            let text = condition.lowercased()
+            if text.contains("rain") || text.contains("drizzle") || text.contains("thunderstorm") {
+                return "雨"
+            }
+            if text.contains("snow") || text.contains("sleet") {
+                return "雪"
+            }
+            if text.contains("fog") || text.contains("mist") || text.contains("haze") {
+                return "霧"
+            }
+            if text.contains("cloud") {
+                return "くもり"
+            }
+            if text.contains("clear") {
+                return "晴れ"
+            }
+            return "不明"
+        }
+
+        var roadRisk: Double {
+            let text = condition.lowercased()
+            let wetKeywords = ["rain", "drizzle", "thunderstorm", "snow", "mist", "fog"]
+            let wet = wetKeywords.contains { text.contains($0) }
+            let base = wet ? 1.2 : 0.6
+            return min(2.5, base + (wind.speed / 20.0))
+        }
     }
 }
 
@@ -212,17 +322,5 @@ struct MockWeatherService: WeatherService {
     func fetchSnapshot(for coordinate: CoordinateReference) async throws -> WeatherSnapshot {
         try await Task.sleep(nanoseconds: 100_000_000)
         return WeatherSnapshot.sample
-    }
-}
-
-struct MockTideService: TideService {
-    func fetchTide(for coordinate: CoordinateReference) async throws -> TideReport {
-        try await Task.sleep(nanoseconds: 100_000_000)
-        return TideReport(
-            timestamp: Date(),
-            height: 1.7,
-            state: "Slack",
-            source: "Mock"
-        )
     }
 }

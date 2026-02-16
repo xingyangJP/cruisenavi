@@ -3,13 +3,19 @@ import SwiftUI
 struct RoutePreviewLoadingView: View {
     var body: some View {
         ZStack {
-            Color.black.opacity(0.9).ignoresSafeArea()
+            LinearGradient(
+                colors: [.citrusCanvasStart, .citrusCanvasEnd],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             VStack(spacing: 16) {
                 ProgressView()
                     .progressViewStyle(.circular)
-                Text("航路を生成しています…")
+                    .tint(Color.citrusPrimaryText)
+                Text("ルートを生成しています…")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.citrusPrimaryText)
             }
         }
     }

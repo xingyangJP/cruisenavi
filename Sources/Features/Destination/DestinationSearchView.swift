@@ -1,13 +1,18 @@
 import SwiftUI
 
 struct DestinationSearchView: View {
-    @ObservedObject var viewModel: DestinationSearchViewModel
+    @StateObject private var viewModel: DestinationSearchViewModel
     var onStartNavigation: (Harbor) -> Void
+
+    init(locationService: LocationService, onStartNavigation: @escaping (Harbor) -> Void) {
+        _viewModel = StateObject(wrappedValue: DestinationSearchViewModel(locationService: locationService))
+        self.onStartNavigation = onStartNavigation
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                TextField("目的地を検索（マリーナ・港・座標）", text: $viewModel.query)
+                TextField("目的地を検索（施設名・住所・座標）", text: $viewModel.query)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal, 16)
                     .textInputAutocapitalization(.never)
@@ -17,13 +22,18 @@ struct DestinationSearchView: View {
                     if viewModel.isSearching {
                         ProgressView("検索中...")
                     }
-                    Section("おすすめルート") {
-                        ForEach(viewModel.results) { harbor in
-                            Button {
-                                viewModel.select(harbor)
-                                onStartNavigation(harbor)
-                            } label: {
-                                DestinationRow(harbor: harbor)
+                    if viewModel.results.isEmpty {
+                        Text("現在地から100km圏内に候補がありません")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Section("現在地から100km圏内") {
+                            ForEach(viewModel.results) { harbor in
+                                Button {
+                                    viewModel.select(harbor)
+                                    onStartNavigation(harbor)
+                                } label: {
+                                    DestinationRow(harbor: harbor)
+                                }
                             }
                         }
                     }
@@ -44,13 +54,13 @@ private struct DestinationRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(harbor.name)
                     .font(.headline)
-                Text("設備: \(harbor.facilities.joined(separator: ", "))")
+                Text("カテゴリ: \(harbor.facilities.joined(separator: ", "))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text(String(format: "%.1f nm", harbor.distance))
+                Text(String(format: "%.1f km", harbor.distance))
                     .font(.headline)
                 Text("ETA \(harbor.etaMinutes)分")
                     .font(.caption)

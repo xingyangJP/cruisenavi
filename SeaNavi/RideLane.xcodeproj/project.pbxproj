@@ -9,14 +9,13 @@
 /* Begin PBXBuildFile section */
 		D3046AC62EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */; };
 		D3046AC72EBF1F0F00E1A497 /* WeatherSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */; };
-		D3046AC82EBF1F0F00E1A497 /* TideReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */; };
 		D3046AC92EBF1F0F00E1A497 /* WeatherConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */; };
 		D3046ACA2EBF1F0F00E1A497 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AC02EBF1F0F00E1A497 /* WeatherService.swift */; };
 		D3046ACB2EBF1F0F00E1A497 /* SeaMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */; };
 		D3046ACC2EBF1F0F00E1A497 /* VoyageLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */; };
 		D3046ACD2EBF1F0F00E1A497 /* PortsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB62EBF1F0F00E1A497 /* PortsListView.swift */; };
 		D3046ACE2EBF1F0F00E1A497 /* NavigationDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB22EBF1F0F00E1A497 /* NavigationDashboardView.swift */; };
-		D3046ACF2EBF1F0F00E1A497 /* TideWeatherCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */; };
+		D3046ACF2EBF1F0F00E1A497 /* WeatherCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB82EBF1F0F00E1A497 /* WeatherCardView.swift */; };
 		D3046AD02EBF1F0F00E1A497 /* SeaNaviApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */; };
 		D3046AD12EBF1F0F00E1A497 /* LogbookListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB02EBF1F0F00E1A497 /* LogbookListView.swift */; };
 		D3046AD22EBF1F0F00E1A497 /* Harbor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */; };
@@ -25,15 +24,14 @@
 		D3046AD72EBF349600E1A497 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AD62EBF349600E1A497 /* SplashView.swift */; };
 		D3046ADF2EBF357300E1A497 /* Color+SeaNavi.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */; };
 		D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */; };
-		D353FFF12EC05EF700F3CA59 /* NauticalRoutePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */; };
-		D353FFF22EC05EF700F3CA59 /* RoutingWaypoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */; };
 		D386513D2EC02FAA0013CA16 /* RouteSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513C2EC02FAA0013CA16 /* RouteSummary.swift */; };
 		D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513E2EC030350013CA16 /* DestinationSearchView.swift */; };
 		D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */; };
 		D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */; };
+		D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */; };
 		D3A4F0012EC11F4E005AD04B /* RoutePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */; };
 		D3A4F0052EC1302C005AD04B /* RoutePreviewLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */; };
-		D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */; };
+		D4A100022ED0000000000001 /* HealthWorkoutSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A100012ED0000000000001 /* HealthWorkoutSyncService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,9 +42,8 @@
 		D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewModel.swift; sourceTree = "<group>"; };
 		D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeaMapView.swift; sourceTree = "<group>"; };
 		D3046AB62EBF1F0F00E1A497 /* PortsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortsListView.swift; sourceTree = "<group>"; };
-		D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideWeatherCardView.swift; sourceTree = "<group>"; };
+		D3046AB82EBF1F0F00E1A497 /* WeatherCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherCardView.swift; sourceTree = "<group>"; };
 		D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Harbor.swift; sourceTree = "<group>"; };
-		D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideReport.swift; sourceTree = "<group>"; };
 		D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoyageLog.swift; sourceTree = "<group>"; };
 		D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSnapshot.swift; sourceTree = "<group>"; };
 		D3046AC02EBF1F0F00E1A497 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
@@ -55,16 +52,15 @@
 		D3046AD62EBF349600E1A497 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SplashView.swift; path = ../Sources/Features/Splash/SplashView.swift; sourceTree = SOURCE_ROOT; };
 		D3046ADD2EBF357300E1A497 /* Color+SeaNavi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+SeaNavi.swift"; sourceTree = "<group>"; };
 		D353FFEC2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocationCoordinate2D+Distance.swift"; sourceTree = "<group>"; };
-		D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NauticalRoutePlanner.swift; sourceTree = "<group>"; };
-		D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingWaypoint.swift; sourceTree = "<group>"; };
-		D35EAC762EBF176E0093DFC9 /* SeaNavi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SeaNavi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D35EAC762EBF176E0093DFC9 /* RideLane.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RideLane.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D386513C2EC02FAA0013CA16 /* RouteSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteSummary.swift; sourceTree = "<group>"; };
 		D386513E2EC030350013CA16 /* DestinationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchView.swift; sourceTree = "<group>"; };
 		D386513F2EC030350013CA16 /* DestinationSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestinationSearchViewModel.swift; sourceTree = "<group>"; };
 		D38651432EC0305D0013CA16 /* DrivingNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingNavigationView.swift; sourceTree = "<group>"; };
+		D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKPolyline+Coordinates.swift"; sourceTree = "<group>"; };
 		D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewView.swift; sourceTree = "<group>"; };
 		D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewLoadingView.swift; sourceTree = "<group>"; };
-		D38651462EC035710013CA16 /* MKPolyline+Coordinates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MKPolyline+Coordinates.swift"; sourceTree = "<group>"; };
+		D4A100012ED0000000000001 /* HealthWorkoutSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWorkoutSyncService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -90,7 +86,6 @@
 			isa = PBXGroup;
 			children = (
 				D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */,
-				D3046AD62EBF349600E1A497 /* SplashView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -132,7 +127,7 @@
 		D3046AB92EBF1F0F00E1A497 /* Weather */ = {
 			isa = PBXGroup;
 			children = (
-				D3046AB82EBF1F0F00E1A497 /* TideWeatherCardView.swift */,
+				D3046AB82EBF1F0F00E1A497 /* WeatherCardView.swift */,
 			);
 			path = Weather;
 			sourceTree = "<group>";
@@ -156,7 +151,6 @@
 			children = (
 				D386513C2EC02FAA0013CA16 /* RouteSummary.swift */,
 				D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */,
-				D3046ABC2EBF1F0F00E1A497 /* TideReport.swift */,
 				D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */,
 				D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */,
 			);
@@ -185,6 +179,7 @@
 				D353FFF02EC05EF700F3CA59 /* Routing */,
 				D3046AC12EBF1F0F00E1A497 /* API */,
 				D3046AC32EBF1F0F00E1A497 /* Location */,
+				D4A100032ED0000000000001 /* Health */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -212,11 +207,16 @@
 			path = Design;
 			sourceTree = "<group>";
 		};
+		D35300152EC1BA0500F3CA59 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		D353FFF02EC05EF700F3CA59 /* Routing */ = {
 			isa = PBXGroup;
 			children = (
-				D353FFEE2EC05EF700F3CA59 /* NauticalRoutePlanner.swift */,
-				D353FFEF2EC05EF700F3CA59 /* RoutingWaypoint.swift */,
 			);
 			path = Routing;
 			sourceTree = "<group>";
@@ -228,13 +228,14 @@
 				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
 				D35EAC772EBF176E0093DFC9 /* Products */,
 				D3046AC52EBF1F0F00E1A497 /* Sources */,
+				D35300152EC1BA0500F3CA59 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
 		D35EAC772EBF176E0093DFC9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D35EAC762EBF176E0093DFC9 /* SeaNavi.app */,
+				D35EAC762EBF176E0093DFC9 /* RideLane.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -267,12 +268,20 @@
 			path = Extensions;
 			sourceTree = "<group>";
 		};
+		D4A100032ED0000000000001 /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				D4A100012ED0000000000001 /* HealthWorkoutSyncService.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		D35EAC752EBF176E0093DFC9 /* SeaNavi */ = {
+		D35EAC752EBF176E0093DFC9 /* RideLane */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "SeaNavi" */;
+			buildConfigurationList = D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "RideLane" */;
 			buildPhases = (
 				D35EAC722EBF176E0093DFC9 /* Sources */,
 				D35EAC732EBF176E0093DFC9 /* Frameworks */,
@@ -285,11 +294,11 @@
 			fileSystemSynchronizedGroups = (
 				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
 			);
-			name = SeaNavi;
+			name = RideLane;
 			packageProductDependencies = (
 			);
 			productName = SeaNavi;
-			productReference = D35EAC762EBF176E0093DFC9 /* SeaNavi.app */;
+			productReference = D35EAC762EBF176E0093DFC9 /* RideLane.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -300,14 +309,14 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2600;
-				LastUpgradeCheck = 2600;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					D35EAC752EBF176E0093DFC9 = {
 						CreatedOnToolsVersion = 26.0.1;
 					};
 				};
 			};
-			buildConfigurationList = D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "SeaNavi" */;
+			buildConfigurationList = D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "RideLane" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -321,7 +330,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				D35EAC752EBF176E0093DFC9 /* SeaNavi */,
+				D35EAC752EBF176E0093DFC9 /* RideLane */,
 			);
 		};
 /* End PBXProject section */
@@ -348,11 +357,8 @@
 				D3A4F0012EC11F4E005AD04B /* RoutePreviewView.swift in Sources */,
 				D3A4F0052EC1302C005AD04B /* RoutePreviewLoadingView.swift in Sources */,
 				D38651452EC0305D0013CA16 /* DrivingNavigationView.swift in Sources */,
-				D3046AC82EBF1F0F00E1A497 /* TideReport.swift in Sources */,
 				D353FFED2EC041FA00F3CA59 /* CLLocationCoordinate2D+Distance.swift in Sources */,
 				D3046AC92EBF1F0F00E1A497 /* WeatherConfiguration.swift in Sources */,
-				D353FFF12EC05EF700F3CA59 /* NauticalRoutePlanner.swift in Sources */,
-				D353FFF22EC05EF700F3CA59 /* RoutingWaypoint.swift in Sources */,
 				D3046ACA2EBF1F0F00E1A497 /* WeatherService.swift in Sources */,
 				D3046ACB2EBF1F0F00E1A497 /* SeaMapView.swift in Sources */,
 				D38651482EC035710013CA16 /* MKPolyline+Coordinates.swift in Sources */,
@@ -363,7 +369,8 @@
 				D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */,
 				D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */,
 				D3046ACE2EBF1F0F00E1A497 /* NavigationDashboardView.swift in Sources */,
-				D3046ACF2EBF1F0F00E1A497 /* TideWeatherCardView.swift in Sources */,
+				D3046ACF2EBF1F0F00E1A497 /* WeatherCardView.swift in Sources */,
+				D4A100022ED0000000000001 /* HealthWorkoutSyncService.swift in Sources */,
 				D3046AD02EBF1F0F00E1A497 /* SeaNaviApp.swift in Sources */,
 				D3046AD12EBF1F0F00E1A497 /* LogbookListView.swift in Sources */,
 				D3046AD22EBF1F0F00E1A497 /* Harbor.swift in Sources */,
@@ -433,6 +440,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -490,6 +498,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -500,13 +509,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SeaNavi/RideLane.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BGC65S8NX7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Navis;
+				INFOPLIST_KEY_CFBundleDisplayName = RideLane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "ライドログをヘルスケアに同期するために使用します。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -516,7 +529,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -538,13 +551,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SeaNavi/RideLane.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BGC65S8NX7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Navis;
+				INFOPLIST_KEY_CFBundleDisplayName = RideLane;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "ライドログをヘルスケアに同期するために使用します。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -554,7 +571,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.39;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -574,7 +591,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "SeaNavi" */ = {
+		D35EAC712EBF176E0093DFC9 /* Build configuration list for PBXProject "RideLane" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D35EAC7F2EBF176F0093DFC9 /* Debug */,
@@ -583,7 +600,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "SeaNavi" */ = {
+		D35EAC812EBF176F0093DFC9 /* Build configuration list for PBXNativeTarget "RideLane" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D35EAC822EBF176F0093DFC9 /* Debug */,

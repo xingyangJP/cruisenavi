@@ -9,11 +9,11 @@ struct WeatherSnapshot: Identifiable {
 
     let id = UUID()
     let timestamp: Date
-    let tideHeight: Double
-    let tideState: String
+    let condition: String
     let windSpeed: Double
     let windDirection: Double
-    let waveHeight: Double
+    let roadRisk: Double
+    let precipitationStartMinutes: Int?
     let warning: WarningLevel
 
     var windCompass: String {
@@ -24,11 +24,11 @@ struct WeatherSnapshot: Identifiable {
 
     static let sample = WeatherSnapshot(
         timestamp: Date(),
-        tideHeight: 1.8,
-        tideState: "Flood",
+        condition: "晴れ",
         windSpeed: 9.2,
         windDirection: 45,
-        waveHeight: 0.6,
+        roadRisk: 0.6,
+        precipitationStartMinutes: nil,
         warning: .none
     )
 }

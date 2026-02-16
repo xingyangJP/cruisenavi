@@ -1,0 +1,211 @@
+# SeaNavi 開発進捗ログ
+
+## 2025-11-08
+- SwiftUI ベースの最小アプリ構成を作成（`SeaNaviApp` エントリ + ダッシュボード画面）
+- Navigation / Weather / Logbook / Ports それぞれのプレースホルダービューとサンプル ViewModel を追加
+- 要件定義のデータモデル（VoyageLog, WeatherSnapshot, Harbor）をコード化し、ダッシュボードにバインド
+- README_TEST.md をドラフトし、シミュレータでのテストフロー叩き台を準備
+
+## 2025-11-09
+- `LocationService` を実装し、CoreLocation／MockRouteProvider の再生でルートポイントを生成
+- `SeaMapView` を追加し、MapKit のユーザ位置／ポリライン／浅瀬ポリゴン表示を実現
+- `WeatherAPIClient` / `TideAPIClient` の骨組みと Mock サービスを用意し、Dashboard VM から `async/await` でフェッチ
+- HUD を位置情報・気象データにリアクティブ連携、警告メッセージのフェイルセーフを追加
+- README_TEST.md を v0.2 へ更新（MapKit / API テストケース追記）
+- Config ディレクトリとサンプル plist を追加し、Weather API キーの外部化と loader 実装を完了
+- OpenWeather One Call / Open-Meteo Marine API と接続し、リアル風速・潮位・警報ロジックをアプリに反映
+- TideWeatherCard にソース表示とリアル潮汐の表示ロジックを追加、README_TEST.md v0.3 で検証手順を更新
+
+## 2025-11-10
+- 目的地セット時にルートプレビュー（全画面マップ + スタート/キャンセル）を表示するフローを追加
+- RoutePreviewView を実装し、DrivingNavigationView との遷移を分離
+- RouteSummary / NauticalRoutePlanner / RoutingWaypoint を追加し、最寄り港/海岸と候補ウェイポイントから航路を構築
+- SplashView をロゴフェード演出に調整
+
+## 2025-11-11
+- `MaritimeRoutes.json` を追加し、全国の航路ノード・エッジ・制限ポリゴンを JSON/GeoJSON 形式で管理できるようにした
+- `MaritimeChartData` ローダーを実装し、アプリ起動時に JSON からデータを読み込む仕組みを構築
+- NauticalRoutePlanner をデータ駆動型に再設計し、陸上スタート時は沿岸アンカー経由で海上ノードへ橋渡しするコース生成を実装
+- 国土数値情報（海岸線/港湾）から `MaritimeRoutes.json` を自動生成する `Scripts/generate_maritime_routes.py` を追加し、`GeoData/` ディレクトリにダウンロードデータを配置する運用を確立
+- 国土数値情報サイトの海岸線/港湾データ（C23 / P11 系）のダウンロード URL を調査。403/404 で取得できなかったため、今後はサイトのダウンロード UI から手動取得して `GeoData/` へ配置するフローを整理予定
+- 熊本県メッシュ（C23-59L-43 JGD）を手動でダウンロード→pyshp で GeoJSON 化し `GeoData/coastline.geojson` にマージ、`generate_maritime_routes.py` で `MaritimeRoutes.json` を再生成（港湾データが揃うまでは暫定的に Coastline を ports に転用）
+- 海図は県単位で配信し、Firestore をサーバとしてパッケージのメタデータ／ダウンロード URL を管理する方針に更新。README_TECH_SPEC / README_TEST / README_GEODATA に反映
+- P11（`C02-02P-jgd.zip`）を取得し、Shift_JIS 対応の pyshp スクリプトで `GeoData/ports.geojson` を生成。実港湾データを用いて `generate_maritime_routes.py` を再実行し、天草エリアで A港→B港テストが可能な最小パッケージを作成
+- 海岸線ノードのサンプル間隔（5km）とエッジ長（20km）を CLI から制御できるようにし、ルート生成時は天草周辺のノードだけをロードするようフィルタリング。DestinationSearch も熊本サンプル港のみ表示に切り替え
+
+## 2026-02-14
+- プロジェクト把握タスクとして、`README.md` / `README_TECH_SPEC.md` / `README_TEST.md` / `README_UI.md` / `README_GEODATA.md` / `docs/API.md` を確認し、要件・設計・運用ドキュメントの整合を確認
+- 実装確認として `Sources/` 配下のアプリ起点（`SeaNaviApp`）、ダッシュボード VM、ルート生成（`NauticalRoutePlanner`）、位置情報（`LocationService`）、気象潮汐 API クライアント、画面遷移（Destination → RoutePreview → Driving）を読んで現状機能を整理
+- `Scripts/generate_maritime_routes.py` と `SeaNavi/SeaNavi/MaritimeRoutes.json` の関係を確認し、GeoData から海図ルート JSON を生成するデータフローを把握
+- 進捗ルールについて、指示では `docs/PROGRESS.md` 指定だが現行リポジトリは `PROGRESS.md` が実体であることを確認
+- README 以外の Markdown を `docs/` に集約するため、`API.md` / `PROGRESS.md` を `docs/` へ移設
+- 重複整理として API キー設定手順を `docs/API.md` に集約し、`README_TEST.md` から参照する形に統一
+- `docs/README.md` を追加し、ドキュメント配置ルールと索引を定義
+- ホーム画面（`NavigationDashboardView`）の右下にアプリバージョン表示（`verX.Y.Z`）を追加
+- コード更新ルールに従い、Xcode プロジェクトの `MARKETING_VERSION` を `1.0` から `1.0.1` にカウントアップ
+- UI 設計書（`README_UI.md`）にバージョン表示位置（Homeフッター）を追記
+- 海図不足時の挙動確認として、`NauticalRoutePlanner` のフォールバック条件を検証。A* が失敗した場合に `fallbackRoute`（直線ベース）へ落ちることを確認
+- `MaritimeRoutes.json` の連結性を調査し、ノード 5,377 に対して連結成分 659（最大 230 ノード）と分断が大きく、東京側開始点の成分サイズが 13 ノードしかないことを確認
+- 上記により、東京湾付近の開始点から天草港（三角港/本渡港/牛深港）への経路は同一成分に入らず、結果として直線系フォールバック表示になることを再現確認
+- 天草先行整備のため `Scripts/generate_maritime_routes.py` を改修（リージョン抽出 `--region amakusa`、ノード重複除去、陸地交差エッジ抑止、連結成分統計出力を追加）
+- 生成品質の機械検証用に `Scripts/validate_maritime_routes.py` を追加（連結成分、主要港到達性、深度分布、任意で陸地交差チェック）
+- 現行データのベースライン検証を実施し、三角港と本渡港が同一連結成分に入らず到達性エラーとなることを確認（`validate_maritime_routes.py` の `--point` チェック）
+- `README_GEODATA.md` に天草専用の生成手順（`ports_amakusa.geojson` 抽出 → `--region amakusa` 生成）と検証コマンドを追記
+- 作業場所をローカルSSD側 ` /Users/xingyang/cruisenavi ` へ移し、生成処理の時間を短縮
+- `generate_maritime_routes.py` を追加改修（`--skip-restricted-edge-check` オプション、高速生成後の交差エッジ除去、海岸線の閉ループのみ制限ポリゴン化）
+- 天草向けルートを再生成し、`validate_maritime_routes.py` で主要港（三角港/本渡港/牛深港）の同一連結性を確認（PASS）
+- 同じ生成結果に対して `--check-land-crossing` を実行し、`land_crossing_edges=0` を確認（PASS）
+- ルール準拠として `MARKETING_VERSION` を `1.0.1` から `1.0.2` へ更新
+- 天草生成結果（`SeaNavi/SeaNavi/MaritimeRoutes.json`）は `nodes=1636 edges=5862 restrictedPolygons=330`、連結成分は 92（主要港3点は同一成分）
+- ローカル環境（`/Users/xingyang/cruisenavi`）で `xcodebuild` を実行し、`SeaNavi` Debug ビルド成功を確認
+- 無料深度統合の実装として `Scripts/fetch_openseamap_soundings.py`（OpenSeaMap/OSM seamark 取得）を追加
+- 無料深度統合の実装として `Scripts/extract_bathymetry_points.py`（GEBCO/ETOPO ラスタ -> 深度点CSV抽出）を追加
+- 無料深度統合の実装として `Scripts/apply_bathymetry_to_routes.py`（OpenSeaMap -> GEBCO -> ETOPO 優先でノード深度へ反映）を追加
+- `README_GEODATA.md` に無料深度データ統合手順（取得→抽出→反映→検証）を追記
+- バージョン運用ルールに従い `MARKETING_VERSION` を `1.0.2` から `1.0.3` に更新
+- 実機確認で陸上スタート時にルート線が陸地を横切る表示を確認。`NauticalRoutePlanner.appendApproachSegments` を修正し、陸上ブリッジ線は表示せず最寄り海上アクセス点へスナップする挙動に変更
+- 同様に陸上ゴールについても海上アクセス点へスナップして、陸上セグメントがルートに混入しないよう調整
+- バージョン運用ルールに従い `MARKETING_VERSION` を `1.0.3` から `1.0.4` に更新
+- ナビ時の視認性改善として `RoutePreviewView` / `DrivingNavigationView` の初期カメラ倍率を最大寄り（`latitudeDelta/longitudeDelta = 0.006`）に固定
+- Driving中の追従カメラも同倍率を維持するように変更し、デフォルトが広域表示へ戻らないよう調整
+- バージョン運用ルールに従い `MARKETING_VERSION` を `1.0.4` から `1.0.5` に更新
+
+### 次のステップ候補
+1. 浅瀬ポリゴン・海岸線データを取得し、A* などで実航路を生成
+2. Driving/Preview UI へ音声案内・ターン指示を追加
+3. README_TEST.md のケースを自動化（XCUITest・位置シミュレーションスクリプト）
+4. Map/Tide/Weather のエラーログを OSLog + Telemetry パイプラインに集約
+- プロジェクト整理として `SeaNavi/SeaNavi.xcodeproj`（`project.pbxproj` を持たない空の残骸）を削除し、`SeaNavi/RideLane.xcodeproj` の単一運用に統一
+- 湾岸/海上系の残存UI文言を全面置換（Home/検索/プレビュー/ナビ/天気/ログ/スポット）
+- 単位を `nm`/`kn`/`kt` から `km`/`km/h` に統一し、警告文言を自転車向け（狭路注意）へ更新
+- 目的地サンプルデータを港湾前提から自転車スポット前提へ更新
+- 位置情報許可文言を自転車ナビ用途へ更新
+- ルールに従い `MARKETING_VERSION` を `1.0.5` から `1.0.6` へ更新
+- 潮情報は不要という要件に合わせ、Dashboard の潮位/潮状態表示を削除して天気表示のみに整理
+- 潮データ取得依存を `NavigationDashboardViewModel` から除去（`TideService` / `tideReport` の参照を削除）
+- `SeaNaviApp` の ViewModel 初期化から潮汐サービス注入を削除
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.6` から `1.0.7` に更新
+- 道路上オーバーレイ表示を実現するため `MapKitRoadRoutePlanner` を追加し、`MKDirections` ベースで道路ポリラインを取得するルート計算へ切替
+- `NavigationDashboardViewModel` のルート生成を道路ルート優先へ変更し、API失敗時のみ直線フォールバックを使用
+- ルート案内文は `MKRouteStep.instructions` を優先利用するよう更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.7` から `1.0.8` に更新
+- 道路ルート実装で新規作成した `RoadRoutePlanner.swift` はターゲット未参加だったため、`NavigationDashboardViewModel.swift` 内へ統合してビルド失敗を解消
+- ルートプレビュー画面はナビセット時に全体表示へ変更（スタート〜ゴールが同時に見える `mapRegion` 適用）
+- ナビ開始直後はスタート地点にズームして開始するよう `DrivingNavigationView` を変更
+- プレビュー画面／ナビ画面の右上に地図の拡大縮小UI（`+`/`-`）を追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.8` から `1.0.9` に更新
+- ナビ開始後にズームUIが隠れる事象を修正するため、`DrivingNavigationView` のズームUIレイヤーを前面固定（`zIndex(2)`）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.9` から `1.0.10` に更新
+- ナビ中の拡大縮小UIを右下へ移動し、操作ボタンと重ならないよう下端オフセットを調整
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.10` から `1.0.11` に更新
+- ナビ中ズームUIの重なりを防ぐため、`DrivingNavigationView` の拡大縮小UIを右下固定（`overlay(alignment: .bottomTrailing)`）へ変更し、下端オフセットを再調整
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.11` から `1.0.12` に更新
+- 直線ナビ再発を抑止するため、道路ルート取得を `MapKitRoadRoutePlanner` で段階的リトライ（徒歩→自動車、終点/始点の近傍候補）する方式へ改修
+- ルート取得失敗時のフォールバックを安全側へ変更し、300m超の直線ルートは表示しないよう制御（警告メッセージを表示）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.12` から `1.0.13` に更新
+- ルート失敗原因の可視化として、`MKError` / `URLError` を日本語分類し `warningMessage` に表示するよう改修
+- 目的地道路スナップを追加し、`MKLocalSearch` で近傍住所座標へ補正してからルート探索する処理を実装
+- 道路探索は徒歩/自動車 + 始点/終点近傍候補の段階的リトライに拡張
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.13` から `1.0.14` に更新
+- ナビ開始後の地図向きを進行方向追従へ変更（`DrivingNavigationView` で `location.course` を `MapCamera.heading` に反映）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.14` から `1.0.15` に更新
+- 目的地候補を現在地半径30kmに限定するフィルタを実装（`DestinationSearchViewModel`）
+- 位置更新時にも候補を再計算するように変更し、移動に追従して30km圏内候補を更新
+- 目的地一覧の見出しを `現在地から30km圏内` に変更、候補0件時のメッセージを追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.15` から `1.0.16` に更新
+- 目的地候補を外部取得化: `DestinationSearchViewModel` から `MKLocalSearch` を使って現在地30km圏内のスポットを取得するよう変更
+- 検索キーワード未指定時は自転車向けクエリ（自転車/サイクリング/公園/休憩/展望/カフェ）で周辺候補を収集、重複除去して距離順表示
+- 外部取得に失敗/空の場合のみ既存 `Harbor.sample` を30km圏内でフォールバック表示
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.16` から `1.0.17` に更新
+- モック位置フォールバックを起動時デフォルトOFFに変更（`LocationService(allowMockFallback: false)` 相当）。`ENABLE_MOCK_LOCATION=1` の時のみ有効化
+- `LocationService` に追跡状態（実GPS/フォールバック/位置情報なし）と状態メッセージを追加
+- ダッシュボードへ位置状態表示を追加し、実測GPSかフォールバックかを常時可視化
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.17` から `1.0.18` に更新
+- ナビ線品質改善として、`MKDirections` のポリラインに表示前処理を追加（最小距離8mの間引き + 移動平均による平滑化）
+- 平滑化後も始点/終点は固定し、案内の始終点ズレを防止
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.18` から `1.0.19` に更新
+- UIテーマを `Citrus Road` に更新（明るい背景グラデーション + 白系カード + シトラス系アクセント）
+- ダーク固定を解除し、ライト基調で表示する構成へ変更
+- Home / RoutePreview / Driving / Loading の配色を刷新し、水玉などの背景装飾は追加せずシンプルな面構成で統一
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.19` から `1.0.20` に更新
+- `Citrus Road` 適用後に白文字が見えづらい不具合を修正（天気/ライドログ/スポット情報カードをライトテーマ用テキスト色へ統一）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.20` から `1.0.21` に更新
+- 目的地検索画面で表示後に再検索が繰り返される不具合を修正（`DestinationSearchViewModel` の位置更新トリガー自動検索を停止）
+- 検索実行トリガーを「画面表示時 + 検索語変更時」に限定し、結果表示中の不要な再検索を防止
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.21` から `1.0.22` に更新
+- 目的地検索の再実行ループを根本修正: `DestinationSearchView` の ViewModel を `@StateObject` 化し、親画面再描画時の再生成による自動再検索を防止
+- 検索世代管理（generation）を追加し、古い非同期検索結果が後から上書きされる問題を抑止
+- キーワード指定時は指定語のみ検索、未指定時のみ既定クエリ群を検索するよう最適化
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.22` から `1.0.23` に更新
+
+## 2026-02-15
+- プロジェクト把握依頼に対応し、`README.md` / `README_TECH_SPEC.md` / `README_UI.md` / `README_TEST.md` / `README_GEODATA.md` / `docs/README.md` / `docs/PROGRESS.md` を確認してドキュメント上の要件と運用ルールを整理
+- 実装実態の確認として、`SeaNaviApp` / `NavigationDashboardViewModel` / `NavigationDashboardView` / `DestinationSearchViewModel` / `LocationService` / `WeatherService` / `RoutePreviewView` / `DrivingNavigationView` / `SeaMapView` を読んで、現在は自転車向けナビ（道路ルート + 30km圏スポット検索）中心であることを確認
+- バージョンは `SeaNavi/RideLane.xcodeproj/project.pbxproj` の `MARKETING_VERSION = 1.0.23`、ホーム右下表示は `ver1.0.23` で一致していることを確認
+- 仕様差分として、README群の一部は海上ナビ前提（潮汐・港湾）記述が残る一方、実装は自転車ナビ前提（km/kmh、道路スナップ、スポット検索）へ移行済みである点を把握
+- 海上ナビの過去資産削除要望に対応し、`Sources/Services/Routing` の海上ルーティング実装（`NauticalRoutePlanner` / `MaritimeChartData` / `RoutingWaypoint`）を削除
+- 海上関連データ/補助資産として `GeoData/`、`SeaNavi/SeaNavi/MaritimeRoutes.json`、`Scripts/` の海図生成・深度統合スクリプト群を削除
+- 天気モデルの海上依存を除去し、`WeatherSnapshot` から潮位項目を削除、天気カードを `TideWeatherCardView` から `WeatherCardView` へリネーム
+- ドキュメント誤解防止として `README.md` / `README_TECH_SPEC.md` / `README_UI.md` / `README_TEST.md` を自転車ナビ仕様へ全面更新し、`README_GEODATA.md` を削除
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.23` から `1.0.24` に更新
+- HOME が現在地に追従しない問題に対応し、`NavigationDashboardView` と `SeaMapView` で位置追跡開始を多重化し、地図カメラを `userLocation` ベースへ変更
+- HOME のスポット情報が天草固定だった問題に対応し、`NavigationDashboardViewModel` で現在地30km圏の `MKLocalSearch` 結果を定期更新するよう修正
+- `DestinationSearchViewModel` の `NearbySpotProvider` を共有化し、Dashboard と目的地検索で同じ近傍検索ロジックを利用
+- ナビ開始後の地図固定/北向き問題に対応し、`DrivingNavigationView` で開始時に追跡再開、3Dピッチ（60度）+ ヘディングアップ（`CLHeading` 優先）へ変更
+- ルールに従い `MARKETING_VERSION` を `1.0.24` から `1.0.25` に更新し、README のバージョン記載と手順内 `ver` 表示例も `1.0.25` に同期
+- ナビ開始後に時速を確認できるよう、`DrivingNavigationView` の案内カードに現在速度（`km/h`）表示を追加
+- ルールに従い `MARKETING_VERSION` を `1.0.25` から `1.0.26` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.26` へ同期
+- `スポット情報` カードを上位10件表示に変更し、残りを展開する `もっと見る` ボタン（再度タップで `閉じる`）を追加
+- 追跡状態文言の要望対応として、`実GPSで追跡中` を `GPSアクティブ` へ変更
+- ルールに従い `MARKETING_VERSION` を `1.0.26` から `1.0.27` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.27` へ同期
+- ライドログ実データ化として、`NavigationDashboardViewModel` にライド開始時刻・開始ルートインデックスを保持する状態を追加
+- プレビュー後にナビ開始した時点でログ計測を開始し、ナビ終了時に実測ルートポイントから距離・平均時速・天気要約を計算して `voyageLogs` へ保存するよう変更
+- ルールに従い `MARKETING_VERSION` を `1.0.27` から `1.0.28` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.28` へ同期
+- ライドログ永続化を追加し、`voyage_logs.json`（Documents配下）へ保存・起動時復元する仕組みを `NavigationDashboardViewModel` に実装
+- 位置座標を含むログ保存のため、`PersistedVoyageLog` / `PersistedCoordinate` の Codable DTO を追加
+- ルールに従い `MARKETING_VERSION` を `1.0.28` から `1.0.29` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.29` へ同期
+- Apple Health 同期を追加し、ナビ終了時の `VoyageLog` を `HKWorkout`（cycling）として保存、ルートポイントを `HKWorkoutRoute` として同期する `HealthWorkoutSyncService` を新規実装
+- `SeaNaviApp` から `HealthWorkoutSyncService` を `NavigationDashboardViewModel` へ注入し、ライドログ確定時に非同期同期を実行するよう変更
+- HealthKit 利用設定として `RideLane.entitlements`（`com.apple.developer.healthkit`）を追加し、`project.pbxproj` に `CODE_SIGN_ENTITLEMENTS` と Health 利用目的文言（Share/Update）を追加
+- 関連ドキュメント更新として `README.md` / `README_TECH_SPEC.md` / `README_TEST.md` に Health 同期仕様と確認手順を追記
+- ルールに従い `MARKETING_VERSION` を `1.0.29` から `1.0.30` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.30` へ同期
+- ライドログごとの Health 同期状態表示を追加し、`同期中...` / `Health同期済み` / `同期失敗` / `同期スキップ` を `LogbookListView` の各ログ行に表示
+- 同期サービスの戻り値を `RideLogSyncResult` に拡張し、`NavigationDashboardViewModel` で状態遷移（syncing -> synced/failed/skipped）を管理するよう変更
+- ルールに従い `MARKETING_VERSION` を `1.0.30` から `1.0.31` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.31` へ同期
+- HOME のスポット情報カードを削除し、タップ不可カード表示を廃止
+- `LogbookListView` をダッシュボード化し、日/週/月の期間切替・ライド回数/総距離/総時間/平均時速の集計カード表示を追加
+- 同期間の最新ログ一覧（最大6件）を表示し、既存の Health 同期状態表示は各ログ行へ継続表示
+- `README_UI.md` の Home 構成をログダッシュボード前提へ更新
+- ルールに従い `MARKETING_VERSION` を `1.0.31` から `1.0.32` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.32` へ同期
+- 期間切替が体感しづらい問題に対応し、ログ集計範囲をカレンダー基準からローリング基準（直近24時間 / 7日 / 30日）へ変更
+- ライドログ行をタップ可能にして詳細シート（距離・平均時速・時間・ルート点・地図ルート）を追加
+- ルールに従い `MARKETING_VERSION` を `1.0.32` から `1.0.33` に更新し、README 群と Home の `ver` 表示デフォルト値を `1.0.33` へ同期
+
+## 2026-02-16
+- デザイン更新された元データ `splash.png` / `app_icon.png` を iOS アセットへ反映（`SeaNavi/SeaNavi/Assets.xcassets/Splash.imageset/*` と `SeaNavi/SeaNavi/Assets.xcassets/AppIcon.appiconset/app_icon.png` を差し替え）
+- 差し替え後に `shasum` で元画像との一致を確認
+- `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` を実行し `BUILD SUCCEEDED` を確認
+- 画像アセット更新のみ（コード更新なし）のため、バージョン表記のカウントアップは対象外
+- HOMEのHUDカード（ETA/距離/速度/方位）を要件見直しで削除し、`ライドマップ`・`天気`・`ライドログ`中心の構成へ簡素化
+- HUD向けメトリクス状態（`etaText`/`distance`/`speed`/`heading`）の更新ロジックを `NavigationDashboardViewModel` から削除して表示不整合の原因を除去
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.33` から `1.0.34` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.34` へ同期
+- 天気取得を `WeatherKit` 優先へ切替し、失敗時のみ OpenWeather（`2.5/weather`）へフォールバックする `ChainedWeatherService` を追加
+- One Call 3.0 の `401` 失敗時に天気が更新されない問題を解消し、モック天気は `ENABLE_MOCK_WEATHER=1` の時のみ利用する動作へ変更
+- 天気カードへ `天候` 表示を追加（晴れ/くもり/雨など）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.34` から `1.0.35` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.35` へ同期
+- 天気カードの風速表示を `km/h` から `m/s` へ変更
+- 天気カードUIをウィジェット風のリッチ表示へ刷新（条件連動グラデーション・大きい天候表示・メトリクスピル）
+- WeatherKitの時間予報から降雨開始目安を算出し「xx分後に雨が降る見込み」を表示（取得不可時は `当面は降雨予測なし`）
+- `WeatherSnapshot` に降雨予測用 `precipitationStartMinutes` を追加し、WeatherKit/OpenWeather 経路へ反映
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.35` から `1.0.36` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.36` へ同期
+- HOMEのライドマッププレビューを衛星表示（hybrid）から通常ナビ向けの標準地図（standard）へ変更
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.36` から `1.0.37` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.37` へ同期
+- 目的地検索範囲を `30km` から `100km` に拡張（`DestinationSearchViewModel.nearbyRadiusKm`）
+- 目的地検索のもっさり対策として、入力時に 300ms デバウンスを追加し、`MKLocalSearch` のキーワード検索を並列実行へ変更
+- 検索結果は距離順で最大60件に制限し、一覧描画の負荷を抑制
+- HOME側の周辺スポット内部更新は `30km` 固定を維持し、目的地検索拡張による常時バックグラウンド負荷増を回避
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.37` から `1.0.38` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.38` へ同期
+- ルート探索を自転車向けに調整し、交通手段候補の優先順を `自動車 -> 徒歩` に変更
+- 徒歩フォールバックで階段案内（`階段/stairs/steps` など）を含むルートは除外する制御を追加
+- ETAを `MKDirections.expectedTravelTime` 依存から距離ベースの自転車想定速度（18km/h）計算へ変更
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.38` から `1.0.39` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.39` へ同期

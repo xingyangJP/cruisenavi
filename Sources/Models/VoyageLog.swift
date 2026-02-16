@@ -22,7 +22,7 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 18.4,
             averageSpeed: 12.3,
-            weatherSummary: "Calm seas / NE 6kt"
+            weatherSummary: "晴れ / 北東 12km/h"
         ),
         VoyageLog(
             id: UUID(),
@@ -31,7 +31,7 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 5.2,
             averageSpeed: 7.1,
-            weatherSummary: "Fog patches / SW 3kt"
+            weatherSummary: "くもり / 南西 8km/h"
         )
     ]
 }

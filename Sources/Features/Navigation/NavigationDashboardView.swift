@@ -10,8 +10,8 @@ struct NavigationDashboardView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color.deepSeaBlue,
-                    Color.deepSeaBlue.opacity(0.9)
+                    Color.citrusCanvasStart,
+                    Color.citrusCanvasEnd
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -22,49 +22,50 @@ struct NavigationDashboardView: View {
                 LazyVStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("航行マップ")
+                            Text("ライドマップ")
                                 .font(.title2.bold())
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color.citrusPrimaryText)
                             SeaMapView(locationService: viewModel.locationService)
                                 .frame(height: 260)
                             HStack {
                                 Label("ルートポイント \(viewModel.locationService.routePoints.count)", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
                                 Spacer()
-                                Label("追跡中", systemImage: "antenna.radiowaves.left.and.right")
-                                    .foregroundStyle(.green)
+                                Label(viewModel.locationService.trackingMode.label, systemImage: "antenna.radiowaves.left.and.right")
+                                    .foregroundStyle(viewModel.locationService.trackingMode.isActive ? .green : .orange)
                             }
                             .font(.footnote)
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(Color.citrusSecondaryText)
+
+                            Text(viewModel.locationService.trackingStatusMessage)
+                                .font(.caption2)
+                                .foregroundStyle(Color.citrusSecondaryText)
                         }
                     }
 
-                    NavigationHUDView(
-                        eta: viewModel.etaText,
-                        distance: viewModel.distance,
-                        speed: viewModel.speed,
-                        heading: viewModel.heading,
-                        warning: viewModel.warningMessage
+                    WeatherCardView(
+                        snapshot: viewModel.weatherSnapshot
                     )
 
-                    TideWeatherCardView(
-                        snapshot: viewModel.weatherSnapshot,
-                        tideReport: viewModel.tideReport
+                    LogbookListView(
+                        logs: viewModel.voyageLogs,
+                        healthStatuses: viewModel.rideLogHealthStatuses
                     )
-
-                    LogbookListView(logs: viewModel.voyageLogs)
-
-                    PortsListView(harbors: viewModel.harbors)
 
                     Button {
                         showDestinationSheet = true
                     } label: {
-                        Label("目的地を設定してナビ開始", systemImage: "sailboat.fill")
+                        Label("目的地を設定してナビ開始", systemImage: "bicycle")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 20))
+                            .background(Color.citrusAmber, in: RoundedRectangle(cornerRadius: 20))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
+
+                    Text(appVersionLabel)
+                        .font(.caption2)
+                        .foregroundStyle(Color.citrusSecondaryText)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 32)
@@ -74,9 +75,7 @@ struct NavigationDashboardView: View {
             .scrollIndicators(.hidden)
         }
         .sheet(isPresented: $showDestinationSheet) {
-            DestinationSearchView(
-                viewModel: DestinationSearchViewModel(locationService: viewModel.locationService)
-            ) { harbor in
+            DestinationSearchView(locationService: viewModel.locationService) { harbor in
                 viewModel.startNavigation(to: harbor)
                 showDestinationSheet = false
                 showRoutePreview = true
@@ -115,7 +114,8 @@ struct NavigationDashboardView: View {
                     onChangeDestination: {
                         showDrivingMode = false
                         showDestinationSheet = true
-                    }
+                    },
+                    locationService: viewModel.locationService
                 )
             } else {
                 ProgressView().task {
@@ -131,42 +131,15 @@ struct NavigationDashboardView: View {
         .onChange(of: viewModel.routeSummary != nil) { hasRoute in
             showDrivingMode = hasRoute
         }
-    }
-}
-
-struct NavigationHUDView: View {
-    let eta: String
-    let distance: Double
-    let speed: Double
-    let heading: String
-    let warning: String?
-
-    var body: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 20) {
-                Grid(horizontalSpacing: 16, verticalSpacing: 12) {
-                    GridRow {
-                        HUDMetric(label: "ETA", value: eta, icon: "clock")
-                        HUDMetric(label: "距離", value: String(format: "%.1f nm", distance), icon: "arrow.triangle.turn.up.right.diamond")
-                    }
-                    GridRow {
-                        HUDMetric(label: "速度", value: String(format: "%.1f kn", speed), icon: "speedometer")
-                        HUDMetric(label: "方位", value: heading, icon: "safari")
-                    }
-                }
-
-                if let warning {
-                    HStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
-                        Text(warning)
-                            .font(.subheadline)
-                            .foregroundStyle(.white)
-                    }
-                    .accessibilityLabel("警告 \(warning)")
-                }
-            }
+        .onAppear {
+            viewModel.locationService.requestAuthorization()
+            viewModel.locationService.startTracking()
         }
+    }
+
+    private var appVersionLabel: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.39"
+        return "ver\(version)"
     }
 }
 
@@ -180,38 +153,16 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 28)
-                .fill(.ultraThinMaterial)
+                .fill(Color.citrusCard)
                 .overlay(
                     RoundedRectangle(cornerRadius: 28)
-                        .stroke(Color.white.opacity(0.15))
+                        .stroke(Color.citrusBorder)
                 )
 
             content
                 .padding(24)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
-    }
-}
-
-private struct HUDMetric: View {
-    let label: String
-    let value: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(.white.opacity(0.9))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-                Text(value)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
     }
 }
