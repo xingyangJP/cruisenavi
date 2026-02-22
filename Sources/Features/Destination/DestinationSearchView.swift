@@ -2,9 +2,10 @@ import SwiftUI
 
 struct DestinationSearchView: View {
     @StateObject private var viewModel: DestinationSearchViewModel
-    var onStartNavigation: (Harbor) -> Void
+    @State private var selectedRouteMode: CyclingRouteMode = .flat
+    var onStartNavigation: (Harbor, CyclingRouteMode) -> Void
 
-    init(locationService: LocationService, onStartNavigation: @escaping (Harbor) -> Void) {
+    init(locationService: LocationService, onStartNavigation: @escaping (Harbor, CyclingRouteMode) -> Void) {
         _viewModel = StateObject(wrappedValue: DestinationSearchViewModel(locationService: locationService))
         self.onStartNavigation = onStartNavigation
     }
@@ -18,19 +19,33 @@ struct DestinationSearchView: View {
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
 
+                Picker("ルートモード", selection: $selectedRouteMode) {
+                    ForEach(CyclingRouteMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+
+                Text(selectedRouteMode.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                 List {
                     if viewModel.isSearching {
                         ProgressView("検索中...")
                     }
                     if viewModel.results.isEmpty {
-                        Text("現在地から100km圏内に候補がありません")
+                        Text(viewModel.emptyStateMessage)
                             .foregroundStyle(.secondary)
                     } else {
-                        Section("現在地から100km圏内") {
+                        Section(viewModel.resultSectionTitle) {
                             ForEach(viewModel.results) { harbor in
                                 Button {
                                     viewModel.select(harbor)
-                                    onStartNavigation(harbor)
+                                    onStartNavigation(harbor, selectedRouteMode)
                                 } label: {
                                     DestinationRow(harbor: harbor)
                                 }

@@ -4,6 +4,8 @@ import MapKit
 struct RoutePreviewView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
+    let rainAvoidanceAlert: RainAvoidanceAlert?
+    var onApplyRainAvoidance: () -> Void
     var onCancel: () -> Void
     var onStart: () -> Void
 
@@ -45,6 +47,9 @@ struct RoutePreviewView: View {
             }
 
             VStack(spacing: 16) {
+                if let rainAvoidanceAlert {
+                    rainAvoidanceBanner(alert: rainAvoidanceAlert)
+                }
                 previewCard
                 HStack(spacing: 12) {
                     Button(action: onCancel) {
@@ -73,6 +78,39 @@ struct RoutePreviewView: View {
             currentRegion = region
             cameraPosition = .region(region)
         }
+    }
+
+    private func rainAvoidanceBanner(alert: RainAvoidanceAlert) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "cloud.rain")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.citrusOrange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(alert.title)
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Color.citrusPrimaryText)
+                Text(alert.message)
+                    .font(.caption)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("回避ルート提案") {
+                onApplyRainAvoidance()
+            }
+            .font(.caption.weight(.bold))
+            .buttonStyle(.borderedProminent)
+            .tint(Color.citrusAmber)
+            .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.citrusBorder)
+        )
+        .padding(.horizontal, 20)
     }
 
     private func zoomIn() {

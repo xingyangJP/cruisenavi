@@ -33,6 +33,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published var currentLocation: CLLocation?
     @Published var heading: CLHeading?
     @Published var routePoints: [CLLocationCoordinate2D] = []
+    @Published var currentSpeedKmh: Double = 0
     @Published var trackingMode: TrackingMode = .unavailable
     @Published var trackingStatusMessage: String = "位置情報の取得を待機中"
 
@@ -40,6 +41,7 @@ final class LocationService: NSObject, ObservableObject {
     private var playbackTimer: AnyCancellable?
     private var playbackIndex: Int = 0
     private let allowMockFallback: Bool
+    private var lastSpeedSampleLocation: CLLocation?
 
     init(allowMockFallback: Bool = false) {
         self.allowMockFallback = allowMockFallback
@@ -106,6 +108,8 @@ final class LocationService: NSObject, ObservableObject {
     private func startAuthorizedUpdates() {
         playbackTimer?.cancel()
         playbackTimer = nil
+        lastSpeedSampleLocation = nil
+        currentSpeedKmh = 0
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
         locationManager.requestLocation()
@@ -125,6 +129,8 @@ final class LocationService: NSObject, ObservableObject {
         stopTracking()
         trackingMode = .unavailable
         trackingStatusMessage = reason
+        currentSpeedKmh = 0
+        lastSpeedSampleLocation = nil
     }
 
     private func startMockPlayback() {
@@ -144,15 +150,53 @@ final class LocationService: NSObject, ObservableObject {
 
                 routePoints.append(point)
                 currentLocation = CLLocation(latitude: point.latitude, longitude: point.longitude)
+                currentSpeedKmh = 0
             }
+    }
+
+    private func normalizeSpeedKmh(from location: CLLocation) -> Double {
+        let now = Date()
+        let gpsFreshThreshold: TimeInterval = 5
+        let stopThresholdKmh: Double = 0.8
+        let alpha: Double = 0.35
+
+        let gpsSpeedKmh: Double? = {
+            guard location.speed >= 0 else { return nil }
+            guard abs(location.timestamp.timeIntervalSince(now)) <= gpsFreshThreshold else { return nil }
+            return location.speed * 3.6
+        }()
+
+        let fallbackKmh: Double? = {
+            guard let last = lastSpeedSampleLocation else { return nil }
+            let dt = location.timestamp.timeIntervalSince(last.timestamp)
+            guard dt > 0.5 && dt < 15 else { return nil }
+            let meters = location.distance(from: last)
+            return (meters / dt) * 3.6
+        }()
+
+        #if DEBUG
+        if gpsSpeedKmh == nil, let fallbackKmh {
+            print(String(format: "Speed fallback applied: %.2f km/h", fallbackKmh))
+        }
+        #endif
+
+        var raw = gpsSpeedKmh ?? fallbackKmh ?? 0
+        if raw < stopThresholdKmh {
+            raw = 0
+        }
+
+        let smoothed = (alpha * raw) + ((1 - alpha) * currentSpeedKmh)
+        return smoothed < stopThresholdKmh ? 0 : smoothed
     }
 }
 
 extension LocationService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
+        currentSpeedKmh = normalizeSpeedKmh(from: location)
         currentLocation = location
         routePoints.append(location.coordinate)
+        lastSpeedSampleLocation = location
         trackingMode = .gps
         trackingStatusMessage = "GPSアクティブ"
     }

@@ -59,6 +59,9 @@ struct WeatherCardView: View {
 
     private var rainText: String {
         if let minutes = snapshot.precipitationStartMinutes {
+            if (30...60).contains(minutes) {
+                return "雨回避アラート: \(minutes)分後に雨予測"
+            }
             return "\(minutes)分後に雨が降る見込み"
         }
         return "当面は降雨予測なし"
@@ -72,6 +75,8 @@ struct WeatherCardView: View {
             return "cloud.snow.fill"
         case let text where text.contains("霧"):
             return "cloud.fog.fill"
+        case let text where text.contains("晴れ時々くもり"):
+            return "cloud.sun.fill"
         case let text where text.contains("くもり"):
             return "cloud.fill"
         default:
@@ -85,6 +90,8 @@ struct WeatherCardView: View {
             return [Color(red: 0.19, green: 0.31, blue: 0.51), Color(red: 0.08, green: 0.11, blue: 0.24)]
         case let text where text.contains("雪"):
             return [Color(red: 0.47, green: 0.65, blue: 0.78), Color(red: 0.22, green: 0.33, blue: 0.46)]
+        case let text where text.contains("晴れ時々くもり"):
+            return [Color(red: 0.40, green: 0.62, blue: 0.88), Color(red: 0.27, green: 0.42, blue: 0.76)]
         case let text where text.contains("くもり"):
             return [Color(red: 0.42, green: 0.51, blue: 0.63), Color(red: 0.23, green: 0.30, blue: 0.40)]
         default:

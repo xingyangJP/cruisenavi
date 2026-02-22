@@ -1,23 +1,52 @@
 import SwiftUI
 import MapKit
+import UIKit
 
 struct DrivingNavigationView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
+    let rainAvoidanceAlert: RainAvoidanceAlert?
     let onExit: () -> Void
     let onChangeDestination: () -> Void
+    let onRerouteRequest: (CLLocation, [CLLocationCoordinate2D]) -> Void
+    let onApplyRainAvoidance: () -> Void
     @ObservedObject var locationService: LocationService
 
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var zoomSpan = MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)
     @State private var lastKnownHeading: CLLocationDirection = 0
+    @State private var remainingRouteCoordinates: [CLLocationCoordinate2D]
+    @State private var remainingDistanceKm: Double
+
+    init(
+        destination: Harbor,
+        routeSummary: RouteSummary,
+        rainAvoidanceAlert: RainAvoidanceAlert?,
+        onExit: @escaping () -> Void,
+        onChangeDestination: @escaping () -> Void,
+        onRerouteRequest: @escaping (CLLocation, [CLLocationCoordinate2D]) -> Void,
+        onApplyRainAvoidance: @escaping () -> Void,
+        locationService: LocationService
+    ) {
+        self.destination = destination
+        self.routeSummary = routeSummary
+        self.rainAvoidanceAlert = rainAvoidanceAlert
+        self.onExit = onExit
+        self.onChangeDestination = onChangeDestination
+        self.onRerouteRequest = onRerouteRequest
+        self.onApplyRainAvoidance = onApplyRainAvoidance
+        self.locationService = locationService
+        let initialCoordinates = routeSummary.routeCoordinates ?? []
+        _remainingRouteCoordinates = State(initialValue: initialCoordinates)
+        _remainingDistanceKm = State(initialValue: routeSummary.totalDistance)
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
             Map(position: $cameraPosition) {
                 UserAnnotation()
-                if let coordinates = routeSummary.routeCoordinates, coordinates.count > 1 {
-                    MapPolyline(coordinates: coordinates)
+                if remainingRouteCoordinates.count > 1 {
+                    MapPolyline(coordinates: remainingRouteCoordinates)
                         .stroke(Color.aquaTeal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 }
             }
@@ -26,45 +55,115 @@ struct DrivingNavigationView: View {
             .onAppear {
                 locationService.requestAuthorization()
                 locationService.startTracking()
+                setNavigationAwakeMode(enabled: true)
                 // When navigation starts, zoom to the start point first.
                 focusCameraOnStart(animated: false)
                 focusCameraOnUser(animated: false)
             }
-            .onChange(of: locationService.currentLocation) { _, _ in
+            .onDisappear {
+                setNavigationAwakeMode(enabled: false)
+            }
+            .onChange(of: locationService.currentLocation) { _, newLocation in
+                if let newLocation {
+                    updateRemainingRoute(with: newLocation)
+                    onRerouteRequest(newLocation, remainingRouteCoordinates)
+                }
                 focusCameraOnUser(animated: true)
             }
             .onChange(of: locationService.heading) { _, _ in
                 focusCameraOnUser(animated: true)
             }
+            .onChange(of: routeSummary.totalDistance) { _, _ in
+                resetRemainingRoute()
+            }
+            .onChange(of: routeSummary.routeCoordinates?.count ?? 0) { _, _ in
+                resetRemainingRoute()
+            }
 
-            VStack(spacing: 16) {
-                DrivingInstructionCard(
-                    route: routeSummary,
-                    destination: destination,
-                    currentSpeedKmh: max((locationService.currentLocation?.speed ?? 0) * 3.6, 0),
-                    onChange: onChangeDestination
-                )
-                    .padding(.horizontal, 16)
+            VStack(spacing: 0) {
+                HStack(alignment: .top) {
+                    VStack(spacing: 10) {
+                        ControlButton(icon: "xmark", color: .citrusOrange, foreground: .white, action: onExit)
+                        ControlButton(icon: "line.3.horizontal", color: .citrusCard, foreground: .citrusPrimaryText, action: onChangeDestination)
+                    }
+
+                    Spacer()
+
+                    MapZoomControl(onZoomIn: zoomIn, onZoomOut: zoomOut)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 56)
+
+                if let rainAvoidanceAlert {
+                    rainAvoidanceBanner(alert: rainAvoidanceAlert)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                }
 
                 Spacer()
 
-                HStack(spacing: 12) {
-                    ControlButton(icon: "xmark.circle.fill", title: "終了", color: .citrusOrange, foreground: .white, action: onExit)
-                    ControlButton(icon: "ellipsis.circle", title: "メニュー", color: .citrusCard, foreground: .citrusPrimaryText, action: onChangeDestination)
-                }
+                DrivingInstructionCard(
+                    route: routeSummary,
+                    currentSpeedKmh: locationService.currentSpeedKmh,
+                    remainingDistanceKm: remainingDistanceKm,
+                    onChange: onChangeDestination
+                )
                 .padding(.horizontal, 16)
-                .padding(.bottom, 30)
+                .padding(.bottom, 24)
             }
-
-            Color.clear
-                .overlay(alignment: .bottomTrailing) {
-                    MapZoomControl(onZoomIn: zoomIn, onZoomOut: zoomOut)
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 150)
-                }
-                .ignoresSafeArea()
-                .zIndex(2)
+            .zIndex(2)
         }
+    }
+
+    private func resetRemainingRoute() {
+        remainingRouteCoordinates = routeSummary.routeCoordinates ?? []
+        remainingDistanceKm = routeSummary.totalDistance
+    }
+
+    private func updateRemainingRoute(with location: CLLocation) {
+        guard remainingRouteCoordinates.count > 1 else { return }
+
+        let currentCoordinate = location.coordinate
+        let nearestIndex = nearestRouteIndex(to: currentCoordinate, in: remainingRouteCoordinates)
+        guard nearestIndex >= 0 else { return }
+
+        if nearestIndex > 0 {
+            remainingRouteCoordinates = Array(remainingRouteCoordinates.dropFirst(nearestIndex))
+        }
+
+        let routeDistanceMeters = pathDistance(of: remainingRouteCoordinates)
+        let connectorMeters: Double = {
+            guard let head = remainingRouteCoordinates.first else { return 0 }
+            return currentCoordinate.distance(to: head)
+        }()
+
+        remainingDistanceKm = max((routeDistanceMeters + connectorMeters) / 1000.0, 0)
+    }
+
+    private func nearestRouteIndex(
+        to coordinate: CLLocationCoordinate2D,
+        in route: [CLLocationCoordinate2D]
+    ) -> Int {
+        guard !route.isEmpty else { return -1 }
+        var nearestIndex = 0
+        var nearestDistance = CLLocationDistance.greatestFiniteMagnitude
+        for (index, point) in route.enumerated() {
+            let distance = coordinate.distance(to: point)
+            if distance < nearestDistance {
+                nearestDistance = distance
+                nearestIndex = index
+            }
+        }
+        return nearestIndex
+    }
+
+    private func pathDistance(of route: [CLLocationCoordinate2D]) -> CLLocationDistance {
+        guard route.count > 1 else { return 0 }
+        var total: CLLocationDistance = 0
+        for index in 1..<route.count {
+            total += route[index - 1].distance(to: route[index])
+        }
+        return total
     }
 
     private func zoomIn() {
@@ -137,22 +236,62 @@ struct DrivingNavigationView: View {
         lastKnownHeading = normalized
         return normalized
     }
+
+    private func setNavigationAwakeMode(enabled: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = enabled
+    }
+
+    private func rainAvoidanceBanner(alert: RainAvoidanceAlert) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "cloud.rain")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.citrusOrange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(alert.title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.citrusPrimaryText)
+                Text(alert.message)
+                    .font(.caption2)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("回避ルート提案") {
+                onApplyRainAvoidance()
+            }
+            .font(.caption2.weight(.bold))
+            .buttonStyle(.borderedProminent)
+            .tint(Color.citrusAmber)
+            .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
+        }
+        .padding(12)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.citrusBorder)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+    }
 }
 
 private struct DrivingInstructionCard: View {
     let route: RouteSummary
-    let destination: Harbor
     let currentSpeedKmh: Double
+    let remainingDistanceKm: Double
     var onChange: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
                 Text(route.primaryInstruction)
                     .font(.system(size: 28, weight: .semibold, design: .rounded))
                 Spacer()
-                Text(String(format: "%.1f km", route.nextDistance))
-                    .font(.title3.bold())
+                VStack(alignment: .trailing, spacing: 4) {
+                    Label(String(format: "%.1f km/h", currentSpeedKmh), systemImage: "speedometer")
+                    Label(String(format: "%.1f km", remainingDistanceKm), systemImage: "bicycle.circle")
+                }
+                .font(.footnote.bold())
+                .foregroundStyle(Color.citrusSecondaryText)
             }
             .foregroundStyle(Color.citrusPrimaryText)
 
@@ -161,10 +300,6 @@ private struct DrivingInstructionCard: View {
                 .foregroundStyle(Color.citrusSecondaryText)
 
             HStack {
-                Label("\(route.totalDistance, specifier: "%.1f") km", systemImage: "bicycle.circle")
-                Spacer()
-                Label(String(format: "%.1f km/h", currentSpeedKmh), systemImage: "speedometer")
-                Spacer()
                 Label("ETA \(route.etaString)", systemImage: "clock")
                 Spacer()
                 Button("目的地再設定", action: onChange)
@@ -185,22 +320,18 @@ private struct DrivingInstructionCard: View {
 
 private struct ControlButton: View {
     let icon: String
-    let title: String
     let color: Color
     let foreground: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-                    .fontWeight(.semibold)
-            }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 14)
-            .background(color, in: Capsule())
-            .foregroundStyle(foreground)
+            Image(systemName: icon)
+                .font(.headline.weight(.bold))
+                .frame(width: 46, height: 46)
+                .background(color, in: Circle())
+                .foregroundStyle(foreground)
+                .shadow(color: .black.opacity(0.14), radius: 8, y: 4)
         }
     }
 }

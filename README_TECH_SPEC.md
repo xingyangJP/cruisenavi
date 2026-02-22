@@ -1,20 +1,25 @@
 # RideLane 技術仕様
-バージョン: 1.0.39  
-更新日: 2026-02-15
+バージョン: 1.0.58  
+更新日: 2026-02-22
 
 ## 1. アーキテクチャ
 - Presentation: SwiftUI
 - Domain: `NavigationDashboardViewModel`
 - Data: MapKit (`MKDirections`, `MKLocalSearch`), CoreLocation, URLSession
+- Localization: `SeaNavi/SeaNavi/en.lproj`, `SeaNavi/SeaNavi/ja.lproj`（iOSのアプリ別言語設定に対応）
 
 ## 2. 主要フロー
 1. `NavigationDashboardView` から目的地検索を開く
-2. `DestinationSearchViewModel` が 100km 圏内スポットを取得
+2. `DestinationSearchViewModel` が検索種別に応じた距離範囲でスポットを取得（おすすめ: 10〜100km / テキスト検索: 200km圏内）
 3. `MapKitRoadRoutePlanner` が道路ルートを段階的リトライで計算
 4. `RoutePreviewView` で全体確認後、`DrivingNavigationView` で案内開始
 
 ## 3. ルーティング仕様
-- 交通手段候補: 自動車 → 徒歩（徒歩ルートは階段を含む場合に除外）
+- 交通手段候補:
+  - 平坦優先: 自動車 → 徒歩（徒歩ルートは階段を含む場合に除外）
+  - ヒルクライム: 徒歩 → 自動車（徒歩ルートは階段を含む場合に除外）
+- 目的地設定のルートモード選択を `CyclingRouteMode` として保持し、再ルート時も同モードを維持
+- `MKDirections` は代替ルート取得を有効化し、平坦優先は短距離寄り、ヒルクライムは長距離寄りで候補選定
 - 目的地道路スナップを適用
 - ルート失敗時: 300m 超の直線フォールバックは表示しない
 - ETA は距離と自転車想定速度（18km/h）から算出
@@ -23,12 +28,25 @@
 - 実 GPS を優先
 - `ENABLE_MOCK_LOCATION=1` の場合のみモックフォールバック
 - 追跡状態を UI に表示（実GPS/フォールバック/位置情報なし）
+- 速度は GPS 値優先 + 距離/時間補完で算出し、停止時は 0 表示
+
+## 4.1 ナビ表示/再ルート仕様
+- ナビカード右上に「速度」「目的地までの全体道のり」を2段表示
+- 次操作地点までの残り距離（旧右上表示）は非表示
+- ナビ案内カードは画面下部固定、ズームUIは右上、`終了`/`メニュー` は左上縦アイコン配置
+- 全体道のりは走行進捗に合わせてリアルタイム更新
+- 通過済みルート線は地図から順次非表示
+- 現在地がルートから 35m 超逸脱した場合は自動再ルート（8秒クールダウン）
+- `DrivingNavigationView` 表示中は `UIApplication.shared.isIdleTimerDisabled = true` で自動スリープを抑止し、離脱時に解除
 
 ## 5. 天気仕様
 - WeatherKit を第一優先で使用して天候/風速/風向を取得（風速は m/s 表示）
 - WeatherKit 失敗時は OpenWeather（`2.5/weather`）へフォールバック
 - `ENABLE_MOCK_WEATHER=1` の場合のみモック天気へフォールバック
 - WeatherKit の時間予報から「何分後に雨」を算出して表示（取得不可時は非表示）
+- OpenWeather One Call でも時間予報 (`hourly.pop`) から最初の降雨時刻を算出
+- ナビ/プレビュー中はルート座標（1/4, 1/2, 終点）をサンプリングして30〜60分先降雨を評価
+- 30〜60分先降雨を検知した場合は `RainAvoidanceAlert` を発火し、`回避ルート提案` で平坦優先再ルートを実行
 - 取得値から `roadRisk` と `warning` を算出
 
 ## 6. HealthKit 同期
@@ -39,4 +57,4 @@
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.39`
+- バージョン: `MARKETING_VERSION = 1.0.58`

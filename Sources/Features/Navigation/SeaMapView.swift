@@ -53,13 +53,6 @@ struct SeaMapView: View {
             locationService.requestAuthorization()
             locationService.startTracking()
         }
-        .frame(height: 260)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 30)
-                .stroke(Color.citrusBorder, lineWidth: 1)
-        )
-        .shadow(radius: 20, y: 10)
     }
 }
 

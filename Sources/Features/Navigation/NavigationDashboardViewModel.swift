@@ -3,6 +3,41 @@ import Combine
 import CoreLocation
 import MapKit
 
+enum CyclingRouteMode: String, CaseIterable, Identifiable {
+    case flat
+    case hillClimb
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .flat:
+            return "平坦優先"
+        case .hillClimb:
+            return "ヒルクライム"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .flat:
+            return "獲得標高を抑えた走りやすいルートを優先"
+        case .hillClimb:
+            return "トレーニング向けに登り寄りのルートを優先"
+        }
+    }
+}
+
+struct RainAvoidanceAlert: Equatable {
+    let minutesUntilRain: Int
+    let createdAt: Date
+
+    var title: String { "雨回避アラート" }
+    var message: String {
+        "\(minutesUntilRain)分後にルート上で降雨予測。回避ルートを提案できます"
+    }
+}
+
 @MainActor
 final class NavigationDashboardViewModel: ObservableObject {
     enum RideLogHealthStatus {
@@ -33,6 +68,8 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var routeSummary: RouteSummary?
     @Published var isGeneratingRoute = false
     @Published var pendingRoute: RouteSummary?
+    @Published var selectedRouteMode: CyclingRouteMode = .flat
+    @Published var rainAvoidanceAlert: RainAvoidanceAlert?
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -46,8 +83,14 @@ final class NavigationDashboardViewModel: ObservableObject {
     private var spotsTask: Task<Void, Never>?
     private var activeRideStartTime: Date?
     private var activeRideStartRouteIndex: Int?
+    private var lastOffRouteRerouteAt: Date = .distantPast
+    private var lastWeatherCoordinate: CLLocationCoordinate2D?
+    private var lastWeatherRefreshAt: Date = .distantPast
+    private var lastRainAlertRefreshAt: Date = .distantPast
     private static let voyageLogsFileName = "voyage_logs.json"
     private static let dashboardNearbyRadiusKm: Double = 30.0
+    private static let rainAlertRefreshInterval: TimeInterval = 300
+    private static let rainAlertTargetRange = 30...60
 
     init(
         locationService: LocationService,
@@ -65,10 +108,13 @@ final class NavigationDashboardViewModel: ObservableObject {
         Task { await refreshNearbySpots(force: true) }
     }
 
-    func startNavigation(to harbor: Harbor) {
+    func startNavigation(to harbor: Harbor, mode: CyclingRouteMode) {
+        selectedRouteMode = mode
         activeDestination = harbor
         routeSummary = nil
         pendingRoute = nil
+        rainAvoidanceAlert = nil
+        lastRainAlertRefreshAt = .distantPast
         isGeneratingRoute = true
         Task { await generateRoute(to: harbor) }
     }
@@ -78,6 +124,8 @@ final class NavigationDashboardViewModel: ObservableObject {
         activeDestination = nil
         routeSummary = nil
         pendingRoute = nil
+        rainAvoidanceAlert = nil
+        lastRainAlertRefreshAt = .distantPast
         isGeneratingRoute = false
     }
 
@@ -86,12 +134,46 @@ final class NavigationDashboardViewModel: ObservableObject {
         routeSummary = pendingRoute
         self.pendingRoute = nil
         beginRideLogIfNeeded()
+        Task { await refreshRainAvoidanceAlert(force: true) }
     }
 
     func cancelRoutePreview() {
         pendingRoute = nil
         activeDestination = nil
+        rainAvoidanceAlert = nil
+        lastRainAlertRefreshAt = .distantPast
         isGeneratingRoute = false
+    }
+
+    func applyRainAvoidanceReroute() {
+        guard let destination = activeDestination else { return }
+        guard !isGeneratingRoute else { return }
+        selectedRouteMode = .flat
+        isGeneratingRoute = true
+        #if DEBUG
+        print("Rain avoidance reroute requested.")
+        #endif
+        Task { await generateRoute(to: destination) }
+    }
+
+    func requestRerouteIfOffRoute(currentLocation: CLLocation, referenceRoute: [CLLocationCoordinate2D]) {
+        guard let destination = activeDestination else { return }
+        guard !referenceRoute.isEmpty else { return }
+        guard !isGeneratingRoute else { return }
+        let offRouteThresholdMeters: CLLocationDistance = 35
+        let cooldown: TimeInterval = 8
+
+        let distance = distanceFromRoute(currentLocation.coordinate, route: referenceRoute)
+        guard distance > offRouteThresholdMeters else { return }
+        guard Date().timeIntervalSince(lastOffRouteRerouteAt) >= cooldown else { return }
+
+        #if DEBUG
+        print("Off-route detected (\(Int(distance))m). Triggering reroute.")
+        #endif
+
+        lastOffRouteRerouteAt = Date()
+        isGeneratingRoute = true
+        Task { await generateRoute(to: destination) }
     }
 
     private func startWeatherPolling() {
@@ -99,7 +181,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
-                Task { await self.refreshConditions() }
+                Task { await self.refreshConditions(force: true) }
             }
     }
 
@@ -110,29 +192,62 @@ final class NavigationDashboardViewModel: ObservableObject {
                 guard let self else { return }
                 handleLocationUpdate(location)
                 scheduleNearbySpotsRefresh(for: location.coordinate)
+                Task { await self.refreshConditions() }
             }
             .store(in: &cancellables)
     }
 
-    private func refreshConditions() async {
-        let coordinate = locationService.currentLocation?.coordinate
-            ?? CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)
+    private func refreshConditions(force: Bool = false) async {
+        guard let coordinate = locationService.currentLocation?.coordinate else {
+            return
+        }
+
+        let now = Date()
+        if !force,
+           let lastWeatherCoordinate,
+           now.timeIntervalSince(lastWeatherRefreshAt) < 45 {
+            let moved = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                .distance(from: CLLocation(latitude: lastWeatherCoordinate.latitude, longitude: lastWeatherCoordinate.longitude))
+            if moved < 300 {
+                return
+            }
+        }
+
         do {
             let snapshot = try await weatherService.fetchSnapshot(
                 for: CoordinateReference(latitude: coordinate.latitude, longitude: coordinate.longitude)
             )
-            await MainActor.run {
-                weatherSnapshot = snapshot
-                if warningMessage == nil {
-                    warningMessage = snapshot.warning == .warning ? "強風注意" : nil
-                }
+            weatherSnapshot = snapshot
+            lastWeatherCoordinate = coordinate
+            lastWeatherRefreshAt = now
+            if warningMessage == nil {
+                warningMessage = snapshot.warning == .warning ? "強風注意" : nil
             }
+#if DEBUG
+            print(
+                String(
+                    format: "Weather updated: lat=%.5f lon=%.5f condition=%@",
+                    coordinate.latitude,
+                    coordinate.longitude,
+                    snapshot.condition
+                )
+            )
+#endif
+            await refreshRainAvoidanceAlert()
         } catch {
-            await MainActor.run {
-                if warningMessage == nil {
-                    warningMessage = "気象データ更新に失敗"
-                }
+            if warningMessage == nil {
+                warningMessage = "気象データ更新に失敗"
             }
+#if DEBUG
+            print(
+                String(
+                    format: "Weather update failed: lat=%.5f lon=%.5f error=%@",
+                    coordinate.latitude,
+                    coordinate.longitude,
+                    String(describing: error)
+                )
+            )
+#endif
         }
     }
 
@@ -143,14 +258,15 @@ final class NavigationDashboardViewModel: ObservableObject {
         let computation = await routePlanner.calculateRoute(
             from: userCoordinate,
             to: harbor.coordinate,
-            destinationName: harbor.name
+            destinationName: harbor.name,
+            routeMode: selectedRouteMode
         )
 
         if let roadRoute = computation.route {
             let cyclingSpeedKmh = 18.0
             let etaMinutes = Int(roadRoute.distanceMeters / (cyclingSpeedKmh / 3.6) / 60)
             await MainActor.run {
-                pendingRoute = RouteSummary(
+                let summary = RouteSummary(
                     totalDistance: roadRoute.distanceMeters / 1000.0,
                     etaMinutes: max(etaMinutes, harbor.etaMinutes),
                     primaryInstruction: roadRoute.primaryInstruction,
@@ -158,9 +274,18 @@ final class NavigationDashboardViewModel: ObservableObject {
                     nextDistance: roadRoute.nextDistanceMeters / 1000.0,
                     routeCoordinates: roadRoute.coordinates
                 )
+                if routeSummary != nil {
+                    routeSummary = summary
+                } else {
+                    pendingRoute = summary
+                }
+                #if DEBUG
+                print("Reroute completed.")
+                #endif
                 warningMessage = computation.usedSnappedDestination ? "目的地を最寄り道路に補正して案内中" : nil
                 isGeneratingRoute = false
             }
+            await refreshRainAvoidanceAlert(force: true)
             return
         }
 
@@ -172,7 +297,11 @@ final class NavigationDashboardViewModel: ObservableObject {
             await MainActor.run {
                 warningMessage = "道路ルート取得失敗: \(computation.failureReason)"
                 pendingRoute = nil
+                rainAvoidanceAlert = nil
                 isGeneratingRoute = false
+                #if DEBUG
+                print("Reroute failed: \(computation.failureReason)")
+                #endif
             }
             return
         }
@@ -181,7 +310,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         let etaMinutes = Int(distanceMeters / (cyclingSpeedKmh / 3.6) / 60)
 
         await MainActor.run {
-            pendingRoute = RouteSummary(
+            let summary = RouteSummary(
                 totalDistance: distanceMeters / 1000.0,
                 etaMinutes: max(etaMinutes, harbor.etaMinutes),
                 primaryInstruction: "推奨ルートを進む",
@@ -189,9 +318,18 @@ final class NavigationDashboardViewModel: ObservableObject {
                 nextDistance: distanceMeters / 1000.0,
                 routeCoordinates: fallbackRoute
             )
+            if routeSummary != nil {
+                routeSummary = summary
+            } else {
+                pendingRoute = summary
+            }
+            #if DEBUG
+            print("Reroute completed with short fallback route.")
+            #endif
             warningMessage = "近距離直線補助: \(computation.failureReason)"
             isGeneratingRoute = false
         }
+        await refreshRainAvoidanceAlert(force: true)
     }
 
     private func handleLocationUpdate(_ location: CLLocation) {
@@ -201,6 +339,8 @@ final class NavigationDashboardViewModel: ObservableObject {
     private func maybeRefreshRoute(for coordinate: CLLocationCoordinate2D) {
         guard let destination = activeDestination else { return }
         guard !isGeneratingRoute else { return }
+        // While actively driving, reroute is controlled by off-route detection.
+        guard routeSummary == nil else { return }
         guard coordinate.latitude.isFinite, coordinate.longitude.isFinite else { return }
         let threshold: CLLocationDistance = 200
         if let lastOrigin = lastRouteOrigin {
@@ -208,6 +348,88 @@ final class NavigationDashboardViewModel: ObservableObject {
         }
         isGeneratingRoute = true
         Task { await generateRoute(to: destination) }
+    }
+
+    private func refreshRainAvoidanceAlert(force: Bool = false) async {
+        guard activeDestination != nil else {
+            rainAvoidanceAlert = nil
+            return
+        }
+
+        guard let routeCoordinates = (routeSummary?.routeCoordinates ?? pendingRoute?.routeCoordinates),
+              routeCoordinates.count > 1 else {
+            rainAvoidanceAlert = nil
+            return
+        }
+
+        let now = Date()
+        if !force, now.timeIntervalSince(lastRainAlertRefreshAt) < Self.rainAlertRefreshInterval {
+            return
+        }
+        lastRainAlertRefreshAt = now
+
+        var predictedMinutes: [Int] = []
+
+        if let localMinutes = rainAlertCandidateMinutes(from: weatherSnapshot.precipitationStartMinutes) {
+            predictedMinutes.append(localMinutes)
+        }
+
+        let samples = sampledRouteCoordinates(from: routeCoordinates)
+        for sample in samples {
+            do {
+                let snapshot = try await weatherService.fetchSnapshot(
+                    for: CoordinateReference(latitude: sample.latitude, longitude: sample.longitude)
+                )
+                if let minutes = rainAlertCandidateMinutes(from: snapshot.precipitationStartMinutes) {
+                    predictedMinutes.append(minutes)
+                }
+            } catch {
+                #if DEBUG
+                print(
+                    String(
+                        format: "Rain alert sampling failed: lat=%.5f lon=%.5f error=%@",
+                        sample.latitude,
+                        sample.longitude,
+                        String(describing: error)
+                    )
+                )
+                #endif
+            }
+        }
+
+        if let nearestMinutes = predictedMinutes.min() {
+            rainAvoidanceAlert = RainAvoidanceAlert(minutesUntilRain: nearestMinutes, createdAt: now)
+            #if DEBUG
+            print("Rain avoidance alert active: rain in \(nearestMinutes) minutes.")
+            #endif
+        } else {
+            rainAvoidanceAlert = nil
+        }
+    }
+
+    private func rainAlertCandidateMinutes(from minutes: Int?) -> Int? {
+        guard let minutes else { return nil }
+        guard Self.rainAlertTargetRange.contains(minutes) else { return nil }
+        return minutes
+    }
+
+    private func sampledRouteCoordinates(from route: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
+        guard !route.isEmpty else { return [] }
+        let quarter = min(route.count - 1, max(0, route.count / 4))
+        let middle = min(route.count - 1, max(0, route.count / 2))
+        let end = route.count - 1
+        let indices = [quarter, middle, end]
+        var sampled: [CLLocationCoordinate2D] = []
+        var seenKeys = Set<String>()
+
+        for index in indices {
+            let coordinate = route[index]
+            let key = "\(Int((coordinate.latitude * 10_000).rounded())):\(Int((coordinate.longitude * 10_000).rounded()))"
+            if seenKeys.insert(key).inserted {
+                sampled.append(coordinate)
+            }
+        }
+        return sampled
     }
 
     private func scheduleNearbySpotsRefresh(for coordinate: CLLocationCoordinate2D) {
@@ -267,6 +489,47 @@ final class NavigationDashboardViewModel: ObservableObject {
             distance += prev.distance(from: next)
         }
         return distance
+    }
+
+    private func distanceFromRoute(
+        _ point: CLLocationCoordinate2D,
+        route: [CLLocationCoordinate2D]
+    ) -> CLLocationDistance {
+        guard route.count > 1 else {
+            guard let only = route.first else { return .greatestFiniteMagnitude }
+            return point.distance(to: only)
+        }
+
+        let pointMap = MKMapPoint(point)
+        var best = CLLocationDistance.greatestFiniteMagnitude
+
+        for index in 1..<route.count {
+            let a = MKMapPoint(route[index - 1])
+            let b = MKMapPoint(route[index])
+            let distance = distanceFromPointToSegment(point: pointMap, a: a, b: b)
+            if distance < best {
+                best = distance
+            }
+        }
+        return best
+    }
+
+    private func distanceFromPointToSegment(
+        point: MKMapPoint,
+        a: MKMapPoint,
+        b: MKMapPoint
+    ) -> CLLocationDistance {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let lengthSquared = (dx * dx) + (dy * dy)
+
+        guard lengthSquared > 0 else {
+            return point.distance(to: a)
+        }
+
+        let t = max(0, min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared))
+        let projection = MKMapPoint(x: a.x + t * dx, y: a.y + t * dy)
+        return point.distance(to: projection)
     }
 
     private func beginRideLogIfNeeded() {
@@ -422,10 +685,18 @@ final class MapKitRoadRoutePlanner {
     func calculateRoute(
         from start: CLLocationCoordinate2D,
         to destination: CLLocationCoordinate2D,
-        destinationName: String
+        destinationName: String,
+        routeMode: CyclingRouteMode
     ) async -> RoadRouteComputation {
         let snapped = await roadSnapper.snap(destination)
-        let transportCandidates: [MKDirectionsTransportType] = [.automobile, .walking]
+        let transportCandidates: [MKDirectionsTransportType] = {
+            switch routeMode {
+            case .flat:
+                return [.automobile, .walking]
+            case .hillClimb:
+                return [.walking, .automobile]
+            }
+        }()
         let destinationCandidates = [snapped.coordinate] + offsetCandidates(from: snapped.coordinate)
         let startCandidates = [start] + offsetCandidates(from: start, distances: [20, 40])
         var failureNotes: [String] = []
@@ -436,7 +707,8 @@ final class MapKitRoadRoutePlanner {
                     from: start,
                     to: end,
                     destinationName: destinationName,
-                    transportType: transport
+                    transportType: transport,
+                    routeMode: routeMode
                 )
                 if let route = attempt.route {
                     return RoadRouteComputation(
@@ -457,7 +729,8 @@ final class MapKitRoadRoutePlanner {
                     from: begin,
                     to: snapped.coordinate,
                     destinationName: destinationName,
-                    transportType: transport
+                    transportType: transport,
+                    routeMode: routeMode
                 )
                 if let route = attempt.route {
                     return RoadRouteComputation(
@@ -481,24 +754,30 @@ final class MapKitRoadRoutePlanner {
         from start: CLLocationCoordinate2D,
         to destination: CLLocationCoordinate2D,
         destinationName: String,
-        transportType: MKDirectionsTransportType
+        transportType: MKDirectionsTransportType,
+        routeMode: CyclingRouteMode
     ) async -> (route: RoadRouteResult?, failureReason: String?) {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
         request.transportType = transportType
-        request.requestsAlternateRoutes = false
+        request.requestsAlternateRoutes = true
 
         do {
             let response = try await MKDirections(request: request).calculate()
-            guard let route = response.routes.first else {
+            guard !response.routes.isEmpty else {
                 return (nil, "\(transportLabel(transportType)): ルート候補なし")
             }
 
-            if transportType == .walking, containsStairs(route.steps) {
+            let validRoutes = response.routes.filter { route in
+                !(transportType == .walking && containsStairs(route.steps))
+            }
+
+            guard !validRoutes.isEmpty else {
                 return (nil, "\(transportLabel(transportType)): 階段を含むため除外")
             }
 
+            let route = selectBestRoute(validRoutes, transportType: transportType, mode: routeMode)
             let rawCoords = route.polyline.coordinatePoints
             let coords = smoothRouteCoordinates(rawCoords)
             guard coords.count > 1 else {
@@ -525,6 +804,35 @@ final class MapKitRoadRoutePlanner {
         } catch {
             return (nil, "\(transportLabel(transportType)): \(routingErrorDescription(error))")
         }
+    }
+
+    private func selectBestRoute(
+        _ routes: [MKRoute],
+        transportType: MKDirectionsTransportType,
+        mode: CyclingRouteMode
+    ) -> MKRoute {
+        switch mode {
+        case .flat:
+            // Flat mode prioritizes shorter routes and road-like segments.
+            return routes.min {
+                scoreForFlat($0, transportType: transportType) < scoreForFlat($1, transportType: transportType)
+            } ?? routes[0]
+        case .hillClimb:
+            // Hill-climb mode prioritizes walking-compatible and longer routes.
+            return routes.min {
+                scoreForHillClimb($0, transportType: transportType) < scoreForHillClimb($1, transportType: transportType)
+            } ?? routes[0]
+        }
+    }
+
+    private func scoreForFlat(_ route: MKRoute, transportType: MKDirectionsTransportType) -> Double {
+        let transportPenalty = transportType == .automobile ? 0.0 : 5_000.0
+        return route.distance + transportPenalty
+    }
+
+    private func scoreForHillClimb(_ route: MKRoute, transportType: MKDirectionsTransportType) -> Double {
+        let transportPenalty = transportType == .walking ? 0.0 : 1_000_000.0
+        return transportPenalty - route.distance
     }
 
     private func transportLabel(_ type: MKDirectionsTransportType) -> String {

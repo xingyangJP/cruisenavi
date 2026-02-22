@@ -12,7 +12,9 @@ final class DestinationSearchViewModel: ObservableObject {
     @Published var isSearching = false
     @Published var selectedDestination: Harbor?
 
-    static let nearbyRadiusKm: Double = 100.0
+    static let recommendedMinimumDistanceKm: Double = 10.0
+    static let recommendedMaximumDistanceKm: Double = 100.0
+    static let textSearchMaximumDistanceKm: Double = 200.0
 
     private let locationService: LocationService
     private let spotProvider = NearbySpotProvider()
@@ -22,6 +24,24 @@ final class DestinationSearchViewModel: ObservableObject {
     init(locationService: LocationService) {
         self.locationService = locationService
         scheduleSearch()
+    }
+
+    var isTextSearchActive: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var resultSectionTitle: String {
+        if isTextSearchActive {
+            return "現在地から200km圏内の検索結果"
+        }
+        return "現在地から10km〜100km圏内のおすすめスポット"
+    }
+
+    var emptyStateMessage: String {
+        if isTextSearchActive {
+            return "現在地から200km圏内に候補がありません"
+        }
+        return "現在地から10km〜100km圏内におすすめスポットがありません"
     }
 
     private func scheduleSearch() {
@@ -44,9 +64,13 @@ final class DestinationSearchViewModel: ObservableObject {
 
     private func updateResults(filter: String?, generation: Int) async {
         let origin = locationService.currentCoordinateOrDefault()
+        let isTextSearch = filter != nil
+        let minimumDistanceKm = isTextSearch ? 0.0 : Self.recommendedMinimumDistanceKm
+        let maximumDistanceKm = isTextSearch ? Self.textSearchMaximumDistanceKm : Self.recommendedMaximumDistanceKm
         let nearby = await spotProvider.fetchNearby(
             origin: origin,
-            radiusKm: Self.nearbyRadiusKm,
+            radiusKm: maximumDistanceKm,
+            minimumDistanceKm: minimumDistanceKm,
             query: filter
         )
 
@@ -73,7 +97,7 @@ final class DestinationSearchViewModel: ObservableObject {
                     etaMinutes: eta
                 )
             }
-            .filter { $0.distance <= Self.nearbyRadiusKm }
+            .filter { $0.distance >= minimumDistanceKm && $0.distance <= maximumDistanceKm }
             .filter { harbor in
                 guard let filter else { return true }
                 return harbor.name.localizedCaseInsensitiveContains(filter)
@@ -96,6 +120,7 @@ final class NearbySpotProvider {
     func fetchNearby(
         origin: CLLocationCoordinate2D,
         radiusKm: Double,
+        minimumDistanceKm: Double = 0,
         query: String?
     ) async -> [Harbor] {
         var candidates: [String] = []
@@ -124,7 +149,7 @@ final class NearbySpotProvider {
                         let response = try await MKLocalSearch(request: request).start()
                         return response.mapItems
                             .map { Harbor(mapItem: $0, from: origin) }
-                            .filter { $0.distance <= radiusKm }
+                            .filter { $0.distance >= minimumDistanceKm && $0.distance <= radiusKm }
                     } catch {
                         return []
                     }

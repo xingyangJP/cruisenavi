@@ -19,64 +19,62 @@ struct NavigationDashboardView: View {
             .ignoresSafeArea()
 
             ScrollView {
-                LazyVStack(spacing: 24) {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("ライドマップ")
-                                .font(.title2.bold())
-                                .foregroundStyle(Color.citrusPrimaryText)
-                            SeaMapView(locationService: viewModel.locationService)
-                                .frame(height: 260)
-                            HStack {
-                                Label("ルートポイント \(viewModel.locationService.routePoints.count)", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                                Spacer()
-                                Label(viewModel.locationService.trackingMode.label, systemImage: "antenna.radiowaves.left.and.right")
-                                    .foregroundStyle(viewModel.locationService.trackingMode.isActive ? .green : .orange)
-                            }
-                            .font(.footnote)
-                            .foregroundStyle(Color.citrusSecondaryText)
+                VStack(spacing: 24) {
+                    SeaMapView(locationService: viewModel.locationService)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 340)
+                        .ignoresSafeArea(edges: .top)
 
-                            Text(viewModel.locationService.trackingStatusMessage)
+                    LazyVStack(spacing: 24) {
+                        Button {
+                            showDestinationSheet = true
+                        } label: {
+                            Label("目的地を設定してナビ開始", systemImage: "bicycle")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.citrusAmber, in: RoundedRectangle(cornerRadius: 20))
+                        }
+                        .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
+
+                        WeatherCardView(
+                            snapshot: viewModel.weatherSnapshot
+                        )
+
+                        LogbookListView(
+                            logs: viewModel.voyageLogs,
+                            healthStatuses: viewModel.rideLogHealthStatuses
+                        )
+
+                        VStack(spacing: 2) {
+                            Text(appVersionLabel)
                                 .font(.caption2)
                                 .foregroundStyle(Color.citrusSecondaryText)
+                            Text("XerographiX Inc.")
+                                .font(.caption2)
+                                .foregroundStyle(Color.citrusSecondaryText.opacity(0.9))
                         }
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
-
-                    WeatherCardView(
-                        snapshot: viewModel.weatherSnapshot
-                    )
-
-                    LogbookListView(
-                        logs: viewModel.voyageLogs,
-                        healthStatuses: viewModel.rideLogHealthStatuses
-                    )
-
-                    Button {
-                        showDestinationSheet = true
-                    } label: {
-                        Label("目的地を設定してナビ開始", systemImage: "bicycle")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.citrusAmber, in: RoundedRectangle(cornerRadius: 20))
-                    }
-                    .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
-
-                    Text(appVersionLabel)
-                        .font(.caption2)
-                        .foregroundStyle(Color.citrusSecondaryText)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 32)
-                .safeAreaPadding(.top, 16)
+                .padding(.bottom, 24)
                 .safeAreaPadding(.bottom, 24)
             }
+            .ignoresSafeArea(edges: .top)
             .scrollIndicators(.hidden)
+            .overlay(alignment: .top) {
+                Image("splash")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 720, height: 192)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+            }
         }
         .sheet(isPresented: $showDestinationSheet) {
-            DestinationSearchView(locationService: viewModel.locationService) { harbor in
-                viewModel.startNavigation(to: harbor)
+            DestinationSearchView(locationService: viewModel.locationService) { harbor, routeMode in
+                viewModel.startNavigation(to: harbor, mode: routeMode)
                 showDestinationSheet = false
                 showRoutePreview = true
             }
@@ -87,6 +85,10 @@ struct NavigationDashboardView: View {
                 RoutePreviewView(
                     destination: destination,
                     routeSummary: preview,
+                    rainAvoidanceAlert: viewModel.rainAvoidanceAlert,
+                    onApplyRainAvoidance: {
+                        viewModel.applyRainAvoidanceReroute()
+                    },
                     onCancel: {
                         viewModel.cancelRoutePreview()
                         showRoutePreview = false
@@ -107,6 +109,7 @@ struct NavigationDashboardView: View {
                 DrivingNavigationView(
                     destination: destination,
                     routeSummary: route,
+                    rainAvoidanceAlert: viewModel.rainAvoidanceAlert,
                     onExit: {
                         viewModel.endNavigation()
                         showDrivingMode = false
@@ -114,6 +117,15 @@ struct NavigationDashboardView: View {
                     onChangeDestination: {
                         showDrivingMode = false
                         showDestinationSheet = true
+                    },
+                    onRerouteRequest: { location, routeCoordinates in
+                        viewModel.requestRerouteIfOffRoute(
+                            currentLocation: location,
+                            referenceRoute: routeCoordinates
+                        )
+                    },
+                    onApplyRainAvoidance: {
+                        viewModel.applyRainAvoidanceReroute()
                     },
                     locationService: viewModel.locationService
                 )
@@ -138,7 +150,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.39"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.58"
         return "ver\(version)"
     }
 }

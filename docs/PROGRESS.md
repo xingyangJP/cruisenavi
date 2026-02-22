@@ -209,3 +209,75 @@
 - 徒歩フォールバックで階段案内（`階段/stairs/steps` など）を含むルートは除外する制御を追加
 - ETAを `MKDirections.expectedTravelTime` 依存から距離ベースの自転車想定速度（18km/h）計算へ変更
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.38` から `1.0.39` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.39` へ同期
+- 実機速度不正対策として `LocationService` に `currentSpeedKmh` を追加し、GPS優先 + 距離/時間補完 + 停止判定（0.8km/h未満0）+ EMA平滑化で速度算出するよう変更
+- ナビ案内カードを再設計し、右上2段に `速度` と `目的地までの全体道のり` を表示、旧右上の `次操作地点までの残り距離` 表示を削除
+- `DrivingNavigationView` に残りルート管理（`remainingRouteCoordinates`/`remainingDistanceKm`）を追加し、移動に応じて全体道のりをリアルタイム更新
+- 通過済みルート区間を地図ポリラインから除外するよう変更
+- 逸脱時自動再ルートを追加（ルートから35m超で再探索、8秒クールダウン、DEBUGログ出力）
+- ルート再探索の反映先を運転中は `routeSummary` へ更新するよう変更し、運転中に新ルートへ追従可能に修正
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.39` から `1.0.40` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.40` へ同期
+- 実機で「常にくもり」に見える事象の調査として、天気取得座標が起動直後の現在地未取得時に東京フォールバックされる経路を確認
+- `NavigationDashboardViewModel` の天気更新を現在地前提へ修正し、位置更新時にも天気再取得するよう変更（微小移動時の過剰更新は距離/時間しきい値で抑制）
+- 天気更新のDEBUGログ（取得座標、更新成功/失敗）を追加し、実機で現在地座標に対して取得できているか検証しやすくした
+- `WeatherService` の天候文言マッピングを見直し、`partlyCloudy` / `few clouds` / `scattered clouds` を `晴れ時々くもり` 表示へ変更
+- 天気カードのアイコン/グラデーションを `晴れ時々くもり` に対応
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.40` から `1.0.41` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.41` へ同期
+- HOMEのライドマップ表示を部分リデザインし、角丸カード背景を廃止して横幅いっぱいのフルブリード表示へ変更
+- ライドマップの地図高さを `260 -> 340` に拡大し、表示情報（ルートポイント数/GPSステータス）は地図下にそのまま維持
+- ライドマップ以外（天気、ログ、ナビ開始ボタン）のレイアウトは従来のカード構成を維持
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.41` から `1.0.42` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.42` へ同期
+- HOMEレイアウト調整として `目的地を設定してナビ開始` ボタンを天気カードの上へ移動
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.42` から `1.0.43` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.43` へ同期
+- HOME地図セクションのUI調整として、見出し「ライドマップ」を削除し、地図を先頭配置（上部余白削減）へ変更
+- `SeaMapView` の角丸クリップ・枠線・シャドウを削除し、矩形のフルブリード地図表示へ変更
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.43` から `1.0.44` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.44` へ同期
+- HOME地図セクションの情報バランス調整として `ルートポイント` 表示を削除し、GPS状態表示のみ中央配置へ変更
+- HOMEヘッダー要素として地図上部中央に `splash` ロゴを配置
+- HOMEのバージョン表示を右寄せから中央寄せに変更
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.44` から `1.0.45` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.45` へ同期
+- HOMEヘッダーロゴの視認性調整として `splash` ロゴサイズを拡大（中央配置は維持）
+- HOME地図下の `実GPS` / `GPSアクティブ` 表示を削除し、地図直下の冗長テキストを廃止
+- 地図とナビ開始ボタンの間隔を詰めてバランスを調整しつつ、ボタンとは十分な余白を維持
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.45` から `1.0.46` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.46` へ同期
+- HOMEの `目的地を設定してナビ開始` ボタン周辺余白を調整し、上側余白を下側余白と同幅に統一
+- HOMEヘッダーロゴ（`splash`）を前回比で2倍サイズに拡大
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.46` から `1.0.47` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.47` へ同期
+- HOME地図の余白不具合を修正（`SeaMapView` の内側固定高さを削除し、親Viewの高さ指定のみを適用）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.47` から `1.0.48` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.48` へ同期
+- HOMEヘッダーロゴ（`splash`）をさらに2倍に拡大
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.48` から `1.0.49` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.49` へ同期
+- HOMEヘッダーロゴ配置を調整し、地図内オーバーレイから画面最上部の固定オーバーレイへ変更（地図と重なり表示）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.49` から `1.0.50` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.50` へ同期
+- HOMEの地図表示をさらに上端へ拡張するため、`ScrollView` で `ignoresSafeArea(edges: .top)` を適用し、ステータスバー領域まで地図を伸長
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.50` から `1.0.51` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.51` へ同期
+- HOME下部のバージョン表示直下にコピーライト表記 `XerographiX Inc.` を追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.51` から `1.0.52` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.52` へ同期
+- ナビ中の画面自動スリープ抑止を追加（`DrivingNavigationView` 表示中に `isIdleTimerDisabled=true`、離脱時に `false` へ復帰）
+- README_UI / README_TECH_SPEC / README_TEST にナビ中スリープ抑止の仕様・確認項目を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.52` から `1.0.53` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.53` へ同期
+- 追加機能アイデア（安全ルート/休憩提案/雨回避/ミッション等）を `docs/FEATURE_ROADMAP.md` に整理し、優先度と第1フェーズ実装候補を明文化
+- `docs/README.md` に `docs/FEATURE_ROADMAP.md` の索引を追加
+- iOS設定の `RideLane > 言語` 項目を有効化するため、`SeaNavi/SeaNavi/en.lproj` / `SeaNavi/SeaNavi/ja.lproj` に `InfoPlist.strings` と `Localizable.strings` を追加
+- `RideLane.xcodeproj` の `knownRegions` に `ja` を追加し、アプリの対応言語を明示
+- README / README_UI / README_TECH_SPEC / README_TEST にアプリ別言語設定の仕様と確認手順を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.53` から `1.0.54` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.54` へ同期
+- ナビ画面レイアウトを再配置し、案内カードを下部固定、ズームUIを右上、`終了`/`メニュー` を左上縦アイコン配置へ変更
+- `終了` / `メニュー` ボタンはテキスト付きカプセルからアイコンのみの円形ボタンへ変更
+- README_UI / README_TECH_SPEC / README_TEST にナビ画面再配置の仕様・確認項目を反映
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.54` から `1.0.55` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.55` へ同期
+- 目的地設定画面にルートモード切替（`平坦優先` / `ヒルクライム`）を追加し、選択モードをナビ開始時に渡すよう接続
+- ルート探索へ `CyclingRouteMode` を導入し、平坦優先は自動車優先+短距離寄り、ヒルクライムは徒歩優先+長距離寄りで代替ルート選定するよう変更
+- 選択したルートモードは再ルート時も維持されるよう `NavigationDashboardViewModel` に状態を追加
+- README / README_UI / README_TECH_SPEC / README_TEST にルートモード機能と確認項目を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.55` から `1.0.56` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.56` へ同期
+- 30〜60分先の降雨予測を対象に `RainAvoidanceAlert` を追加し、ルートプレビュー/ナビ画面に `回避ルート提案` 付きバナーを表示
+- 雨回避ボタン押下時に平坦優先モードで再ルートする `applyRainAvoidanceReroute()` を追加
+- ルート上の降雨判定はルート座標の 1/4・1/2・終点をサンプリングして評価するよう実装
+- OpenWeather One Call の時間予報から最初の降雨開始分を算出する処理を追加
+- README / README_UI / README_TECH_SPEC / README_TEST に雨回避アラート機能と確認項目を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.56` から `1.0.57` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.57` へ同期
+- 目的地検索の距離仕様を改修し、query未入力のおすすめ候補を `10〜100km` の範囲へ変更
+- テキスト検索入力時は検索範囲を `200km` に拡張し、`NearbySpotProvider` へ最小距離パラメータを追加
+- 目的地設定画面の空状態/セクション文言を距離仕様に合わせて `10〜100km` と `200km` で動的表示に変更
+- README / README_UI / README_TECH_SPEC / README_TEST に新しい検索距離仕様を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.57` から `1.0.58` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.58` へ同期

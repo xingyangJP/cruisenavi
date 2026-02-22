@@ -28,6 +28,9 @@ struct ChainedWeatherService: WeatherService {
                 return try await provider.fetchSnapshot(for: coordinate)
             } catch {
                 lastError = error
+#if DEBUG
+                print("Weather provider failed: \(type(of: provider)) error=\(error)")
+#endif
             }
         }
         throw lastError
@@ -42,6 +45,9 @@ final class AppleWeatherKitService: WeatherService {
         let windSpeed = current.wind.speed.converted(to: .metersPerSecond).value
         let windDirection = current.wind.direction.converted(to: .degrees).value
         let condition = weatherConditionText(current.condition)
+#if DEBUG
+        print("WeatherKit condition raw=\(current.condition) localized=\(condition)")
+#endif
         let roadRisk = roadRiskScore(condition: condition, windSpeed: windSpeed)
         let precipitationStartMinutes = nextPrecipitationStartMinutes(from: weather)
 
@@ -76,7 +82,9 @@ final class AppleWeatherKitService: WeatherService {
         switch condition {
         case .clear:
             return "晴れ"
-        case .cloudy, .mostlyCloudy, .partlyCloudy:
+        case .partlyCloudy:
+            return "晴れ時々くもり"
+        case .cloudy, .mostlyCloudy:
             return "くもり"
         case .drizzle, .rain, .heavyRain, .isolatedThunderstorms, .thunderstorms, .strongStorms:
             return "雨"
@@ -146,6 +154,7 @@ final class WeatherAPIClient: WeatherService {
         do {
             let payload = try JSONDecoder().decode(OneCallResponse.self, from: data)
             let current = payload.hourly.first ?? payload.current
+            let precipitationStartMinutes = nextPrecipitationStartMinutes(from: payload.hourly, now: Date())
 
             let warning: WeatherSnapshot.WarningLevel
             if current.windSpeed >= 20 || (current.waveHeight ?? 0) >= 2 {
@@ -162,7 +171,7 @@ final class WeatherAPIClient: WeatherService {
                 windSpeed: current.windSpeed,
                 windDirection: current.windDirection,
                 roadRisk: current.waveHeight ?? 0.6,
-                precipitationStartMinutes: current.precipitationStartMinutes,
+                precipitationStartMinutes: precipitationStartMinutes,
                 warning: warning
             )
         } catch {
@@ -223,6 +232,17 @@ final class WeatherAPIClient: WeatherService {
 }
 
 private extension WeatherAPIClient {
+    func nextPrecipitationStartMinutes(from hourly: [OneCallResponse.Entry], now: Date) -> Int? {
+        let nowUnix = now.timeIntervalSince1970
+        for entry in hourly where entry.timestamp > nowUnix {
+            if let pop = entry.pop, pop >= 0.4 {
+                let minutes = Int((entry.timestamp - nowUnix) / 60.0)
+                return max(minutes, 0)
+            }
+        }
+        return nil
+    }
+
     struct OneCallResponse: Decodable {
         struct WeatherElement: Decodable {
             let main: String?
@@ -245,10 +265,6 @@ private extension WeatherAPIClient {
             var windDirection: Double { wind_deg }
             var waveHeight: Double? { waves?.wave_height }
             var condition: String? { weather?.first?.description ?? weather?.first?.main }
-            var precipitationStartMinutes: Int? {
-                guard let pop, pop >= 0.4 else { return nil }
-                return 0
-            }
         }
 
         let current: Entry
@@ -298,6 +314,9 @@ private extension WeatherAPIClient {
             }
             if text.contains("fog") || text.contains("mist") || text.contains("haze") {
                 return "霧"
+            }
+            if text.contains("few clouds") || text.contains("scattered clouds") {
+                return "晴れ時々くもり"
             }
             if text.contains("cloud") {
                 return "くもり"

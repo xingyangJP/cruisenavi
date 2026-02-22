@@ -5,6 +5,7 @@
 ## Documents
 - `docs/PROGRESS.md`: 開発進捗ログ（ステップごとの作業記録）
 - `docs/API.md`: API キー設定ガイド
+- `docs/FEATURE_ROADMAP.md`: サイクリング向け追加機能の企画・優先度整理
 
 ## README 系ドキュメント（ルート配置）
 - `README.md`: 要件定義
