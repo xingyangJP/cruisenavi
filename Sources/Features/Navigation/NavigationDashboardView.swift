@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import WebKit
+import FirebaseAnalytics
 
 struct NavigationDashboardView: View {
     @ObservedObject var viewModel: NavigationDashboardViewModel
@@ -10,6 +11,9 @@ struct NavigationDashboardView: View {
     @State private var showWalkthrough = false
     @State private var walkthroughIndex = 0
     @State private var selectedLegalDocument: LegalDocumentPage?
+    @State private var showHealthSyncInfo = false
+    @State private var showSettingsSheet = false
+    @State private var didLogHomeView = false
     @AppStorage("onboarding.walkthrough.completed") private var walkthroughCompleted = false
 
     private let walkthroughSteps: [OnboardingWalkthroughStep] = [
@@ -116,26 +120,6 @@ struct NavigationDashboardView: View {
                             Text("XerographiX Inc.")
                                 .font(.caption2)
                                 .foregroundStyle(Color.citrusSecondaryText.opacity(0.9))
-                            HStack(spacing: 6) {
-                                Button("利用規約") {
-                                    selectedLegalDocument = .terms
-                                }
-                                .buttonStyle(.plain)
-                                .font(.caption2)
-                                .foregroundStyle(Color.citrusPrimaryText)
-
-                                Text("｜")
-                                    .font(.caption2)
-                                    .foregroundStyle(Color.citrusSecondaryText.opacity(0.6))
-
-                                Button("プライバシーポリシー") {
-                                    selectedLegalDocument = .privacy
-                                }
-                                .buttonStyle(.plain)
-                                .font(.caption2)
-                                .foregroundStyle(Color.citrusPrimaryText)
-                            }
-                            .padding(.top, 2)
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                     }
@@ -153,6 +137,20 @@ struct NavigationDashboardView: View {
                     .frame(width: 720, height: 192)
                     .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
+            }
+            .overlay(alignment: .topLeading) {
+                Button {
+                    showSettingsSheet = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.citrusPrimaryText)
+                        .padding(11)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1))
+                }
+                .padding(.top, 58)
+                .padding(.leading, 16)
             }
 
             if showWalkthrough {
@@ -188,6 +186,11 @@ struct NavigationDashboardView: View {
                         showRoutePreview = false
                     },
                     onStart: {
+                        Analytics.logEvent("nav_start", parameters: [
+                            "route_mode": viewModel.selectedRouteMode.rawValue,
+                            "distance_km": preview.totalDistance,
+                            "eta_min": preview.etaMinutes
+                        ])
                         viewModel.beginDrivingNavigation()
                         showRoutePreview = false
                         showDrivingMode = true
@@ -237,17 +240,61 @@ struct NavigationDashboardView: View {
         .sheet(item: $selectedLegalDocument) { document in
             LegalDocumentSheet(document: document)
         }
+        .sheet(isPresented: $showHealthSyncInfo) {
+            HealthSyncInfoSheet(
+                isEnabled: Binding(
+                    get: { viewModel.healthSyncEnabled },
+                    set: { viewModel.setHealthSyncEnabled($0) }
+                )
+            )
+        }
+        .sheet(isPresented: $showSettingsSheet) {
+            HomeSettingsSheet(
+                onOpenTerms: {
+                    selectedLegalDocument = .terms
+                },
+                onOpenPrivacy: {
+                    selectedLegalDocument = .privacy
+                },
+                onOpenHealth: {
+                    showHealthSyncInfo = true
+                }
+            )
+        }
         .onChange(of: viewModel.pendingRoute != nil) { hasPreview in
             if hasPreview {
+                if let preview = viewModel.pendingRoute {
+                    Analytics.logEvent("route_preview_open", parameters: [
+                        "route_mode": viewModel.selectedRouteMode.rawValue,
+                        "distance_km": preview.totalDistance,
+                        "eta_min": preview.etaMinutes
+                    ])
+                }
                 showDestinationSheet = false
             }
         }
         .onChange(of: viewModel.routeSummary != nil) { hasRoute in
             showDrivingMode = hasRoute
         }
+        .onChange(of: viewModel.latestRideReward?.id) { rewardID in
+            guard rewardID != nil else { return }
+            let latestLog = viewModel.voyageLogs.first
+            Analytics.logEvent("ride_complete", parameters: [
+                "distance_km": latestLog?.distance ?? 0,
+                "avg_speed_kmh": latestLog?.averageSpeed ?? 0,
+                "badge_count": viewModel.latestRideReward?.badges.count ?? 0,
+                "health_sync_enabled": viewModel.healthSyncEnabled ? "true" : "false"
+            ])
+        }
         .onAppear {
             viewModel.locationService.requestAuthorization()
             viewModel.locationService.startTracking()
+            if !didLogHomeView {
+                Analytics.logEvent("home_view", parameters: [
+                    "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+                ])
+                didLogHomeView = true
+            }
             if shouldForceWalkthroughOnSimulator || !walkthroughCompleted {
                 showWalkthrough = true
                 walkthroughIndex = 0
@@ -256,7 +303,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.78"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.83"
         return "ver\(version)"
     }
 
@@ -527,6 +574,112 @@ private struct LegalDocumentSheet: View {
         }
         .task {
             await viewModel.loadIfNeeded()
+        }
+    }
+}
+
+private struct HomeSettingsSheet: View {
+    let onOpenTerms: () -> Void
+    let onOpenPrivacy: () -> Void
+    let onOpenHealth: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        onOpenTerms()
+                    }
+                } label: {
+                    Label("利用規約", systemImage: "doc.text")
+                }
+
+                Button {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        onOpenPrivacy()
+                    }
+                } label: {
+                    Label("プライバシーポリシー", systemImage: "hand.raised")
+                }
+
+                Button {
+                    dismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        onOpenHealth()
+                    }
+                } label: {
+                    Label("Health連携について", systemImage: "heart.text.square")
+                }
+            }
+            .navigationTitle("設定")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct HealthSyncInfoSheet: View {
+    @Binding var isEnabled: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Apple Health連携について")
+                        .font(.title3.bold())
+                        .foregroundStyle(Color.citrusPrimaryText)
+
+                    Text("RideLaneは、あなたが連携をONにした場合のみ、ライド終了時にHealthへワークアウト情報を保存します。")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.citrusSecondaryText)
+
+                    Group {
+                        Text("同期するデータ")
+                            .font(.headline)
+                        Text("・ワークアウト種別（自転車）\n・開始/終了時刻、所要時間\n・走行距離\n・走行ルート（位置情報）")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.citrusSecondaryText)
+                    }
+
+                    Group {
+                        Text("利用目的")
+                            .font(.headline)
+                        Text("・ライド記録をApple Healthで一元管理するため\n・アプリ内ログとHealth記録を整合させるため")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.citrusSecondaryText)
+                    }
+
+                    Group {
+                        Text("しないこと")
+                            .font(.headline)
+                        Text("・広告目的での利用\n・販売/第三者提供\n・連携ON前の自動送信")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.citrusSecondaryText)
+                    }
+
+                    Toggle(isOn: $isEnabled) {
+                        Text("Apple Healthに同期する")
+                            .font(.headline)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(20)
+            }
+            .navigationTitle("Health連携")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
         }
     }
 }

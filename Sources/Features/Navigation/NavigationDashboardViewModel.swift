@@ -106,6 +106,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var todayRideSuggestion: TodayRideSuggestion?
     @Published var weeklyMission: WeeklyMissionProgress = .init(title: "今週40km", targetKm: 40, currentKm: 0)
     @Published var latestRideReward: RideCompletionReward?
+    @Published var healthSyncEnabled: Bool
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -127,6 +128,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     private static let dashboardNearbyRadiusKm: Double = 30.0
     private static let rainAlertRefreshInterval: TimeInterval = 300
     private static let rainAlertTargetRange = 30...60
+    private static let healthSyncEnabledKey = "health.sync.enabled"
 
     init(
         locationService: LocationService,
@@ -136,6 +138,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         self.locationService = locationService
         self.weatherService = weatherService
         self.rideLogSyncService = rideLogSyncService
+        self.healthSyncEnabled = UserDefaults.standard.object(forKey: Self.healthSyncEnabledKey) as? Bool ?? false
 
         bindLocation()
         startWeatherPolling()
@@ -147,6 +150,11 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func consumeLatestRideReward() {
         latestRideReward = nil
+    }
+
+    func setHealthSyncEnabled(_ enabled: Bool) {
+        healthSyncEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: Self.healthSyncEnabledKey)
     }
 
     func startNavigation(to harbor: Harbor, mode: CyclingRouteMode) {
@@ -568,20 +576,25 @@ final class NavigationDashboardViewModel: ObservableObject {
         voyageLogs.insert(newLog, at: 0)
         latestRideReward = buildRideCompletionReward(newLog: newLog, previousBestDistance: previousBestDistance)
         recalculateGrowthWidgets()
-        rideLogHealthStatuses[newLog.id] = .syncing
         persistVoyageLogs()
-        Task { [rideLogSyncService] in
-            let result = await rideLogSyncService.syncRideLog(newLog)
-            await MainActor.run {
-                switch result {
-                case .synced:
-                    rideLogHealthStatuses[newLog.id] = .synced
-                case .skipped(let reason):
-                    rideLogHealthStatuses[newLog.id] = .skipped(reason)
-                case .failed(let reason):
-                    rideLogHealthStatuses[newLog.id] = .failed(reason)
+
+        if healthSyncEnabled {
+            rideLogHealthStatuses[newLog.id] = .syncing
+            Task { [rideLogSyncService] in
+                let result = await rideLogSyncService.syncRideLog(newLog)
+                await MainActor.run {
+                    switch result {
+                    case .synced:
+                        rideLogHealthStatuses[newLog.id] = .synced
+                    case .skipped(let reason):
+                        rideLogHealthStatuses[newLog.id] = .skipped(reason)
+                    case .failed(let reason):
+                        rideLogHealthStatuses[newLog.id] = .failed(reason)
+                    }
                 }
             }
+        } else {
+            rideLogHealthStatuses[newLog.id] = .skipped("Health連携オフ")
         }
 
         activeRideStartTime = nil

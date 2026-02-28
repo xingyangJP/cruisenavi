@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F50000012F20000100AAA001 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F50000032F20000100AAA001 /* GoogleService-Info.plist */; };
+		F50000022F20000100AAA001 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F50000052F20000100AAA001 /* FirebaseAnalytics */; };
 		D3046AC62EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */; };
 		D3046AC72EBF1F0F00E1A497 /* WeatherSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */; };
 		D3046AC92EBF1F0F00E1A497 /* WeatherConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */; };
@@ -48,6 +50,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F50000032F20000100AAA001 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "../GoogleService-Info.plist"; sourceTree = SOURCE_ROOT; };
 		D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeaNaviApp.swift; sourceTree = "<group>"; };
 		D3046AAE2EBF1F0F00E1A497 /* WeatherConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherConfiguration.swift; sourceTree = "<group>"; };
 		D3046AB02EBF1F0F00E1A497 /* LogbookListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogbookListView.swift; sourceTree = "<group>"; };
@@ -93,6 +96,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F50000022F20000100AAA001 /* FirebaseAnalytics in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,6 +255,7 @@
 			isa = PBXGroup;
 			children = (
 				E10000072F00000100AAA001 /* Frameworks */,
+				F50000032F20000100AAA001 /* GoogleService-Info.plist */,
 				D3046AD42EBF1FC500E1A497 /* Weather.plist */,
 				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
 				D35EAC772EBF176E0093DFC9 /* Products */,
@@ -341,6 +346,7 @@
 			);
 			name = RideLane;
 			packageProductDependencies = (
+				F50000052F20000100AAA001 /* FirebaseAnalytics */,
 			);
 			productName = SeaNavi;
 			productReference = D35EAC762EBF176E0093DFC9 /* RideLane.app */;
@@ -395,6 +401,9 @@
 			);
 			mainGroup = D35EAC6D2EBF176E0093DFC9;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D35EAC772EBF176E0093DFC9 /* Products */;
 			projectDirPath = "";
@@ -411,6 +420,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F50000012F20000100AAA001 /* GoogleService-Info.plist in Resources */,
 				D3046AD52EBF1FC500E1A497 /* Weather.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -611,7 +621,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = RideLane;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "ライドログをヘルスケアに同期するために使用します。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
@@ -624,7 +634,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.78;
+				MARKETING_VERSION = 1.0.83;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -653,7 +663,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = RideLane;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "ライドログをヘルスケアに同期するために使用します。";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
@@ -666,7 +676,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.78;
+				MARKETING_VERSION = 1.0.83;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -697,7 +707,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.78;
+				MARKETING_VERSION = 1.0.83;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -726,7 +736,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.78;
+				MARKETING_VERSION = 1.0.83;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -771,6 +781,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F50000052F20000100AAA001 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D35EAC6E2EBF176E0093DFC9 /* Project object */;
 }

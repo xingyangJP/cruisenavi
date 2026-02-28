@@ -79,6 +79,9 @@ struct DrivingNavigationView: View {
     @State private var lastKnownHeading: CLLocationDirection = 0
     @State private var remainingRouteCoordinates: [CLLocationCoordinate2D]
     @State private var remainingDistanceKm: Double
+    @State private var hasShownArrivalMessage = false
+    @State private var showArrivalMessage = false
+    @State private var arrivalMessage: String?
 
     init(
         destination: Harbor,
@@ -128,7 +131,10 @@ struct DrivingNavigationView: View {
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
                     updateRemainingRoute(with: newLocation)
-                    onRerouteRequest(newLocation, remainingRouteCoordinates)
+                    evaluateArrival(with: newLocation)
+                    if !hasShownArrivalMessage {
+                        onRerouteRequest(newLocation, remainingRouteCoordinates)
+                    }
                 }
                 focusCameraOnUser(animated: true)
             }
@@ -164,6 +170,13 @@ struct DrivingNavigationView: View {
 
                 Spacer()
 
+                if showArrivalMessage, let arrivalMessage {
+                    ArrivalCelebrationBanner(message: arrivalMessage)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 DrivingInstructionCard(
                     route: routeSummary,
                     currentSpeedKmh: locationService.currentSpeedKmh,
@@ -190,6 +203,35 @@ struct DrivingNavigationView: View {
         )
         remainingRouteCoordinates = progress.remainingRoute
         remainingDistanceKm = progress.remainingDistanceKm
+    }
+
+    private func evaluateArrival(with location: CLLocation) {
+        guard !hasShownArrivalMessage else { return }
+        let distanceToDestination = location.coordinate.distance(to: destination.coordinate)
+        let isArrived = distanceToDestination <= 45 || remainingDistanceKm <= 0.08
+        guard isArrived else { return }
+
+        hasShownArrivalMessage = true
+        arrivalMessage = arrivalMessages.randomElement() ?? "目的地に到着しました。おつかれさまでした。"
+        withAnimation(.spring(duration: 0.4)) {
+            showArrivalMessage = true
+        }
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showArrivalMessage = false
+            }
+        }
+    }
+
+    private var arrivalMessages: [String] {
+        [
+            "目的地に到着しました。最高のライドでした。",
+            "ナビ完了です。ここからはゆっくり休憩しましょう。",
+            "到着しました。今日の一本、いい走りです。",
+            "ゴールです。安全運転ありがとうございました。"
+        ]
     }
 
     private func zoomIn() {
@@ -341,6 +383,31 @@ private struct DrivingInstructionCard: View {
                 .stroke(Color.citrusBorder)
         )
         .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+    }
+}
+
+private struct ArrivalCelebrationBanner: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.green)
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.citrusPrimaryText)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.green.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
     }
 }
 

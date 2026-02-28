@@ -333,3 +333,28 @@
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.76` から `1.0.77` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.77` へ同期
 - Homeフッター法務リンクの文言デザインを `利用規約｜プライバシーポリシー` に変更（表示文言を要望に合わせて統一）
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.77` から `1.0.78` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.78` へ同期
+- App Review対策として Home に `Health連携について` 導線を追加し、同期データ/利用目的/しないことを明記した説明シートを実装
+- 説明シートに `Apple Healthに同期する` トグルを追加し、OFF時はナビ終了時のHealthKit保存を実行しないよう `NavigationDashboardViewModel` に同期ゲートを追加
+- OFF時のライドログ同期状態を `Health連携オフ` として表示する仕様に変更
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を仕様反映で更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.78` から `1.0.79` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.79` へ同期
+- Homeフッターの法務/Health導線を整理し、左上の設定アイコンから開く設定シート（`利用規約` / `プライバシーポリシー` / `Health連携について`）へ移設
+- Homeフッターはバージョン/コピーライトのみの表示に簡素化
+- 関連ドキュメント `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` の導線説明を設定シート前提へ更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.79` から `1.0.80` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.80` へ同期
+- Firebase Analytics（`FirebaseAnalytics`）を SPM で追加し、`GoogleService-Info.plist` をリソース同梱
+- `SeaNaviApp` 起動時に `GoogleService-Info.plist` 存在チェック付きで Firebase 初期化を追加（未同梱時はスキップ）
+- Home 初回表示時に `home_view` イベントを送信し、`app_version` パラメータを付与
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を Firebase仕様で更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.80` から `1.0.81` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.81` へ同期
+- ビルド確認: `xcodebuild -project /Users/xingyang/cruisenavi/SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/RideLaneDerivedData build` が `BUILD SUCCEEDED`
+- Firebaseイベントを拡張し、`route_preview_open`（プレビュー表示）、`nav_start`（ナビ開始）、`ride_complete`（ライド完了）を送信する実装を追加
+- `ride_complete` では `distance_km` / `avg_speed_kmh` / `badge_count` / `health_sync_enabled` を送信するよう設定
+- 関連ドキュメント `README.md` / `README_TECH_SPEC.md` / `README_TEST.md` をイベント仕様に合わせて更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.81` から `1.0.82` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.82` へ同期
+- ビルド確認: `xcodebuild -project /Users/xingyang/cruisenavi/SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/RideLaneDerivedData build` が `BUILD SUCCEEDED`
+- ナビ中の到着演出として、目的地まで 45m 以内または残距離 0.08km 以下で「気の利いた到着メッセージ」バナーを一度だけ表示する実装を追加
+- 到着演出時に成功ハプティクスを発火し、メッセージは4秒後に自動で消える挙動を追加
+- 到着演出表示後はオフルート再探索トリガーを抑止し、到着後の不要な再ルートを防止
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を到着演出仕様で更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.82` から `1.0.83` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.83` へ同期

@@ -1,5 +1,5 @@
 # RideLane 技術仕様
-バージョン: 1.0.78  
+バージョン: 1.0.83  
 更新日: 2026-02-28
 
 ## 1. アーキテクチャ
@@ -38,6 +38,7 @@
 - 通過済みルート線は地図から順次非表示
 - 現在地がルートから 35m 超逸脱した場合は自動再ルート（8秒クールダウン）
 - `DrivingNavigationView` 表示中は `UIApplication.shared.isIdleTimerDisabled = true` で自動スリープを抑止し、離脱時に解除
+- 目的地まで 45m 以内、または残距離 0.08km 以下で到着と判定し、到着メッセージを一度だけ表示（4秒で自動非表示）
 
 ## 5. 天気仕様
 - WeatherKit を第一優先で使用して天候/風速/風向を取得（風速は m/s 表示）
@@ -57,7 +58,7 @@
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.78`
+- バージョン: `MARKETING_VERSION = 1.0.83`
 
 ## 8. オンボーディング（ウォークスルー）
 - `NavigationDashboardView` で初回起動時にオーバーレイ型ウォークスルーを表示
@@ -80,10 +81,25 @@
   - ナビ終了時に新規ログからバッジを生成し、ハイライトシートを表示
 
 ## 10. 法務ページ表示仕様
-- Home 下部の `利用規約` / `プライバシー` から `WKWebView` のシートを開く
+- Home 左上の設定シートから `利用規約` / `プライバシー` を選択して `WKWebView` シートを開く
 - 読み込み先URL:
   - `https://lp.xerographix.co.jp/ridelane/terms.html`
   - `https://lp.xerographix.co.jp/ridelane/privacy.html`
 - `Application Support/LegalCache` にHTMLを保存し、通信失敗時はキャッシュを表示
 - キャッシュがない状態でオフラインの場合は、オフライン案内HTMLを表示
 - DOMスクリプトで `RideLane トップへ戻る` 文言を持つリンク/ボタンを非表示化
+
+## 11. Health連携説明・同意仕様
+- Home 左上の設定シートの `Health連携について` から説明シートを開く
+- 説明シートには `同期するデータ` / `利用目的` / `しないこと` を明記
+- トグル `Apple Healthに同期する` がOFFの間は、ナビ終了時にHealthKit保存を実行しない
+- OFF時のライドログ状態は `Health連携オフ` として記録
+
+## 12. Firebase Analytics仕様
+- `GoogleService-Info.plist` をアプリバンドルに同梱し、`SeaNaviApp` 起動時に `FirebaseApp.configure()` を実行
+- `GoogleService-Info.plist` が見つからない場合は初期化をスキップ（DEBUGログのみ出力）
+- 利用SDKは `FirebaseAnalytics`（IDFAはアプリ側で利用しない）
+- Home初回表示時に `home_view` イベントを1回送信し、`app_version` をパラメータで付与
+- ルートプレビュー表示時に `route_preview_open`（`route_mode`, `distance_km`, `eta_min`）を送信
+- ナビ開始時に `nav_start`（`route_mode`, `distance_km`, `eta_min`）を送信
+- ライド終了時に `ride_complete`（`distance_km`, `avg_speed_kmh`, `badge_count`, `health_sync_enabled`）を送信

@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseCore
+import FirebaseAnalytics
 
 @main
 @MainActor
@@ -7,6 +9,8 @@ struct SeaNaviApp: App {
     @StateObject private var dashboardViewModel: NavigationDashboardViewModel
 
     init() {
+        Self.configureFirebaseIfPossible()
+
         let enableMockFallback = ProcessInfo.processInfo.environment["ENABLE_MOCK_LOCATION"] == "1"
         let enableMockWeather = ProcessInfo.processInfo.environment["ENABLE_MOCK_WEATHER"] == "1"
         let service = LocationService(allowMockFallback: enableMockFallback)
@@ -27,6 +31,18 @@ struct SeaNaviApp: App {
             rideLogSyncService: HealthWorkoutSyncService()
         )
         _dashboardViewModel = StateObject(wrappedValue: viewModel)
+    }
+
+    private static func configureFirebaseIfPossible() {
+        guard FirebaseApp.app() == nil else { return }
+        guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else {
+            #if DEBUG
+            print("GoogleService-Info.plist not found in app bundle. Firebase Analytics disabled.")
+            #endif
+            return
+        }
+        FirebaseApp.configure()
+        Analytics.setAnalyticsCollectionEnabled(true)
     }
 
     var body: some Scene {
