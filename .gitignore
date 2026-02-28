@@ -4,6 +4,14 @@ build/
 *.xcworkspace
 xcuserdata/
 
+# macOS / editor noise
+.DS_Store
+**/.DS_Store
+*.swp
+*.tmp
+.idea/
+.vscode/
+
 # Secrets
 Config/Weather.plist
 API.md

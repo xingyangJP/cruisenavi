@@ -370,3 +370,6 @@
 - Home設定ボタンを左上から右上へ移動し、ヘッダーロゴと同じ高さ（top padding）で配置を統一
 - 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` をお気に入り機能・設定ボタン位置変更で更新
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.83` から `1.0.84` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.84` へ同期
+- Git管理対象外ファイル対策: `.gitignore` に `.DS_Store`（全階層）/エディタ一時ファイル（`*.swp`, `*.tmp`）/IDE設定（`.idea/`, `.vscode/`）を追加
+- 既に追跡済みだった `.DS_Store`（ルート, `SeaNavi/`, `Sources/`, `Sources/Features/`, `Sources/Services/`）を `git rm --cached` でインデックスから除外
+- 本対応は開発運用改善のみ（アプリ挙動変更なし）。リリース影響: なし
