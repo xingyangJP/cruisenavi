@@ -1,6 +1,6 @@
 # RideLane 技術仕様
-バージョン: 1.0.58  
-更新日: 2026-02-22
+バージョン: 1.0.78  
+更新日: 2026-02-28
 
 ## 1. アーキテクチャ
 - Presentation: SwiftUI
@@ -57,4 +57,33 @@
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.58`
+- バージョン: `MARKETING_VERSION = 1.0.78`
+
+## 8. オンボーディング（ウォークスルー）
+- `NavigationDashboardView` で初回起動時にオーバーレイ型ウォークスルーを表示
+- 表示制御は `@AppStorage("onboarding.walkthrough.completed")` を使用し、完了/スキップで再表示を抑止
+- シミュレーターのみ `targetEnvironment(simulator)` で毎回表示（QA効率化）
+- ステップ構成:
+  1. 位置情報有効化（`LocationService.requestAuthorization()`）
+  2. Home構成説明
+  3. 初回ライド導線（目的地シート起動）
+  4. 週次ミッション説明
+  5. 完了
+
+## 9. DAU向上機能
+- `TodayRideSuggestion`:
+  - 周辺候補から天候/風/距離を加味して `今日の1本` を算出し、Homeで1タップナビ開始
+  - 候補距離は `10〜50km` を優先
+- `WeeklyMissionProgress`:
+  - 週単位（`weekOfYear`）で距離を集計し、`今週40km` の進捗を表示
+- `RideCompletionReward`:
+  - ナビ終了時に新規ログからバッジを生成し、ハイライトシートを表示
+
+## 10. 法務ページ表示仕様
+- Home 下部の `利用規約` / `プライバシー` から `WKWebView` のシートを開く
+- 読み込み先URL:
+  - `https://lp.xerographix.co.jp/ridelane/terms.html`
+  - `https://lp.xerographix.co.jp/ridelane/privacy.html`
+- `Application Support/LegalCache` にHTMLを保存し、通信失敗時はキャッシュを表示
+- キャッシュがない状態でオフラインの場合は、オフライン案内HTMLを表示
+- DOMスクリプトで `RideLane トップへ戻る` 文言を持つリンク/ボタンを非表示化

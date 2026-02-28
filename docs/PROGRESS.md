@@ -281,3 +281,55 @@
 - 目的地設定画面の空状態/セクション文言を距離仕様に合わせて `10〜100km` と `200km` で動的表示に変更
 - README / README_UI / README_TECH_SPEC / README_TEST に新しい検索距離仕様を追記
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.57` から `1.0.58` に更新し、README群とHomeの `ver` 表示デフォルト値を `1.0.58` へ同期
+- `app_icon.png` のデザイン差し替えを反映し、`AppIcon.appiconset/app_icon.png` を最新画像へ更新
+- README / README_UI / README_TECH_SPEC / README_TEST を `1.0.59` へ更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.58` から `1.0.59` に更新し、Homeの `ver` 表示デフォルト値を `1.0.59` へ同期
+- `xcodebuild test` 失敗要因（`SeaNavi` Scheme の TestAction 未設定）を解消するため、`RideLaneTests` ターゲットを追加
+- `SeaNavi.xcscheme` の `TestAction` に `RideLaneTests` を接続し、スモークテスト `RideLaneSmokeTests.testSmoke()` を追加
+- `README_TEST.md` に自動テスト手順（`xcodebuild ... -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test`）を追記
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test` が `TEST SUCCEEDED`
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.59` から `1.0.60` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.60` へ同期
+- 回帰テスト拡張のため、速度正規化ロジックを `SpeedNormalizer` として抽出し、既存 `LocationService` から利用する構成へ整理（挙動は維持）
+- ルート進捗計算を `RouteProgressEstimator`、逸脱距離計算を `RouteGeometry` として抽出し、`DrivingNavigationView` / `NavigationDashboardViewModel` から共通利用する構成へ整理（挙動は維持）
+- `RideLaneSmokeTests` に回帰テスト6件を追加（速度: GPS優先/補完/停止判定、ルート進捗: 通過済み切り捨て、逸脱距離: 近傍/オフルート）
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test` で 7件 PASS（`TEST SUCCEEDED`）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.60` から `1.0.61` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.61` へ同期
+- バージョン統一要望に対応し、`MARKETING_VERSION` / Home表示 / README群のバージョンを `1.0.70` に更新
+- DLユーザーの利用定着とDAU向上を目的としたウォークスルー提案書 `docs/WALKTHROUGH_DAU_PLAN.md` を新規作成
+- `docs/README.md` に新規ドキュメント索引を追加し、参照導線を更新
+- Homeに初回ウォークスルーUIを実装（4ステップ、オーバーレイ表示、スキップ可）
+- ウォークスルーのCTAを実装（Step1: 位置許可要求、Step3: 目的地シート起動）
+- ウォークスルー完了状態を `@AppStorage("onboarding.walkthrough.completed")` で永続化し、完了/スキップ後は再表示しない仕様を追加
+- `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` にウォークスルー仕様と確認手順を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.70` から `1.0.71` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.71` へ同期
+- DAU向上施策として Home に `今日の1本` 提案カードを実装し、1タップでルート生成〜プレビュー遷移できる導線を追加
+- DAU向上施策として Home に `週次ミッション（今週40km）` 進捗カードを実装（週単位集計、達成/残り距離表示）
+- ナビ終了時に `ライドハイライト` シートを表示する完了リワード（距離/平均時速/バッジ）を実装
+- ウォークスルーを5ステップのリッチ版に拡張（進捗インジケータ、アイコン、ハイライト項目、ミッション/リワード説明を追加）
+- `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` に新機能仕様と確認手順を追記
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.71` から `1.0.72` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.72` へ同期
+- シミュレーター検証効率向上のため、ウォークスルーは `targetEnvironment(simulator)` で毎回表示、実機は従来どおり初回のみ表示へ変更
+- `今日の1本` の提案距離を `10〜50km` 優先に変更し、短すぎる候補が選ばれにくいようスコアリング対象を調整
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.72` から `1.0.73` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.73` へ同期
+- `今日の1本` で `10〜50km` 外の候補（例: 2.1km）が表示される不具合を修正し、範囲外は提案カードを表示しないよう変更
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.73` から `1.0.74` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.74` へ同期
+- App Store PR画像を変形なしで `1242x2688` に統一するため、`APPSTORE/PR/*.png` をアスペクト比維持で拡大し、白余白付きで `APPSTORE/PR/1242x2688/` に書き出し
+- 法務ドキュメント整備として `docs/TERMS_OF_SERVICE_DRAFT.md`（強めの免責・事故責任・サービス保証否認を含む利用規約ドラフト）を作成
+- 法務ドキュメント整備として `docs/PRIVACY_POLICY_DRAFT.md`（位置情報・ライドログ・Health連携を含むプライバシーポリシードラフト）を作成
+- `docs/README.md` に上記2ドキュメントの索引を追加
+- 本対応はドキュメント更新のみ（コード変更なし）のため、`MARKETING_VERSION` の更新は対象外
+- Home下部に `利用規約` / `プライバシー` のアプリ内導線を追加し、`WKWebView` シートで法務ページを表示する実装を追加
+- 法務ページ表示URLを固定化（`https://lp.xerographix.co.jp/ridelane/terms.html` / `https://lp.xerographix.co.jp/ridelane/privacy.html`）
+- 法務ページのHTMLを `Application Support/LegalCache` にキャッシュし、通信失敗時はオフラインでキャッシュ表示するフォールバックを追加
+- アプリ内表示時のみ `RideLane トップへ戻る` 文言を持つリンク/ボタンをDOMスクリプトで非表示化
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を仕様反映で更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.74` から `1.0.75` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.75` へ同期
+- 法務ページが白画面になる不具合を修正。`URLSession + loadHTMLString` 方式を廃止し、`WKWebView` でURLを直接読み込む方式へ変更
+- 通信失敗時のみキャッシュHTMLへフォールバックする挙動に変更し、オンライン時の相対リソース/JS依存ページも正常表示できるよう改善
+- リモート表示成功時に `document.documentElement.outerHTML` を保存し、次回オフライン表示のキャッシュとして利用する方式へ更新
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.75` から `1.0.76` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.76` へ同期
+- 法務ページ白画面の原因調査で、`RideLane トップへ戻る` 非表示JSがリンク親要素（本文コンテナ）まで非表示にしていたことを特定
+- 非表示対象を戻るリンク要素自体（`.back`）に限定し、本文全体が消えないよう修正
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.76` から `1.0.77` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.77` へ同期
+- Homeフッター法務リンクの文言デザインを `利用規約｜プライバシーポリシー` に変更（表示文言を要望に合わせて統一）
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.77` から `1.0.78` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.78` へ同期

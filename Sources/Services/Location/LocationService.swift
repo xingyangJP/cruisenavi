@@ -155,11 +155,38 @@ final class LocationService: NSObject, ObservableObject {
     }
 
     private func normalizeSpeedKmh(from location: CLLocation) -> Double {
-        let now = Date()
-        let gpsFreshThreshold: TimeInterval = 5
-        let stopThresholdKmh: Double = 0.8
-        let alpha: Double = 0.35
+        let result = SpeedNormalizer.normalizedSpeed(
+            currentSpeedKmh: currentSpeedKmh,
+            location: location,
+            lastSampleLocation: lastSpeedSampleLocation,
+            now: Date()
+        )
 
+        #if DEBUG
+        if let fallbackKmh = result.fallbackKmhUsed {
+            print(String(format: "Speed fallback applied: %.2f km/h", fallbackKmh))
+        }
+        #endif
+
+        return result.speedKmh
+    }
+}
+
+struct SpeedNormalizationResult {
+    let speedKmh: Double
+    let fallbackKmhUsed: Double?
+}
+
+enum SpeedNormalizer {
+    static func normalizedSpeed(
+        currentSpeedKmh: Double,
+        location: CLLocation,
+        lastSampleLocation: CLLocation?,
+        now: Date,
+        gpsFreshThreshold: TimeInterval = 5,
+        stopThresholdKmh: Double = 0.8,
+        alpha: Double = 0.35
+    ) -> SpeedNormalizationResult {
         let gpsSpeedKmh: Double? = {
             guard location.speed >= 0 else { return nil }
             guard abs(location.timestamp.timeIntervalSince(now)) <= gpsFreshThreshold else { return nil }
@@ -167,18 +194,12 @@ final class LocationService: NSObject, ObservableObject {
         }()
 
         let fallbackKmh: Double? = {
-            guard let last = lastSpeedSampleLocation else { return nil }
+            guard let last = lastSampleLocation else { return nil }
             let dt = location.timestamp.timeIntervalSince(last.timestamp)
             guard dt > 0.5 && dt < 15 else { return nil }
             let meters = location.distance(from: last)
             return (meters / dt) * 3.6
         }()
-
-        #if DEBUG
-        if gpsSpeedKmh == nil, let fallbackKmh {
-            print(String(format: "Speed fallback applied: %.2f km/h", fallbackKmh))
-        }
-        #endif
 
         var raw = gpsSpeedKmh ?? fallbackKmh ?? 0
         if raw < stopThresholdKmh {
@@ -186,7 +207,9 @@ final class LocationService: NSObject, ObservableObject {
         }
 
         let smoothed = (alpha * raw) + ((1 - alpha) * currentSpeedKmh)
-        return smoothed < stopThresholdKmh ? 0 : smoothed
+        let speed = smoothed < stopThresholdKmh ? 0 : smoothed
+        let fallbackUsed = gpsSpeedKmh == nil ? fallbackKmh : nil
+        return SpeedNormalizationResult(speedKmh: speed, fallbackKmhUsed: fallbackUsed)
     }
 }
 

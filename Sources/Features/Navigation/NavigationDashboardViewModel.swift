@@ -38,6 +38,39 @@ struct RainAvoidanceAlert: Equatable {
     }
 }
 
+struct TodayRideSuggestion: Identifiable {
+    let id = UUID()
+    let harbor: Harbor
+    let title: String
+    let subtitle: String
+}
+
+struct WeeklyMissionProgress: Equatable {
+    let title: String
+    let targetKm: Double
+    let currentKm: Double
+
+    var progress: Double {
+        guard targetKm > 0 else { return 0 }
+        return min(max(currentKm / targetKm, 0), 1)
+    }
+
+    var remainingKm: Double {
+        max(targetKm - currentKm, 0)
+    }
+
+    var isCompleted: Bool {
+        currentKm >= targetKm
+    }
+}
+
+struct RideCompletionReward: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let badges: [String]
+}
+
 @MainActor
 final class NavigationDashboardViewModel: ObservableObject {
     enum RideLogHealthStatus {
@@ -70,6 +103,9 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var pendingRoute: RouteSummary?
     @Published var selectedRouteMode: CyclingRouteMode = .flat
     @Published var rainAvoidanceAlert: RainAvoidanceAlert?
+    @Published var todayRideSuggestion: TodayRideSuggestion?
+    @Published var weeklyMission: WeeklyMissionProgress = .init(title: "今週40km", targetKm: 40, currentKm: 0)
+    @Published var latestRideReward: RideCompletionReward?
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -104,8 +140,13 @@ final class NavigationDashboardViewModel: ObservableObject {
         bindLocation()
         startWeatherPolling()
         loadVoyageLogsFromDisk()
+        recalculateGrowthWidgets()
         Task { await refreshConditions() }
         Task { await refreshNearbySpots(force: true) }
+    }
+
+    func consumeLatestRideReward() {
+        latestRideReward = nil
     }
 
     func startNavigation(to harbor: Harbor, mode: CyclingRouteMode) {
@@ -163,7 +204,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         let offRouteThresholdMeters: CLLocationDistance = 35
         let cooldown: TimeInterval = 8
 
-        let distance = distanceFromRoute(currentLocation.coordinate, route: referenceRoute)
+        let distance = RouteGeometry.distanceFromRoute(currentLocation.coordinate, route: referenceRoute)
         guard distance > offRouteThresholdMeters else { return }
         guard Date().timeIntervalSince(lastOffRouteRerouteAt) >= cooldown else { return }
 
@@ -234,6 +275,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             )
 #endif
             await refreshRainAvoidanceAlert()
+            recalculateGrowthWidgets()
         } catch {
             if warningMessage == nil {
                 warningMessage = "気象データ更新に失敗"
@@ -477,6 +519,7 @@ final class NavigationDashboardViewModel: ObservableObject {
                     .sorted { $0.distance < $1.distance }
             }
             lastSpotsOrigin = origin
+            recalculateGrowthWidgets()
         }
     }
 
@@ -489,47 +532,6 @@ final class NavigationDashboardViewModel: ObservableObject {
             distance += prev.distance(from: next)
         }
         return distance
-    }
-
-    private func distanceFromRoute(
-        _ point: CLLocationCoordinate2D,
-        route: [CLLocationCoordinate2D]
-    ) -> CLLocationDistance {
-        guard route.count > 1 else {
-            guard let only = route.first else { return .greatestFiniteMagnitude }
-            return point.distance(to: only)
-        }
-
-        let pointMap = MKMapPoint(point)
-        var best = CLLocationDistance.greatestFiniteMagnitude
-
-        for index in 1..<route.count {
-            let a = MKMapPoint(route[index - 1])
-            let b = MKMapPoint(route[index])
-            let distance = distanceFromPointToSegment(point: pointMap, a: a, b: b)
-            if distance < best {
-                best = distance
-            }
-        }
-        return best
-    }
-
-    private func distanceFromPointToSegment(
-        point: MKMapPoint,
-        a: MKMapPoint,
-        b: MKMapPoint
-    ) -> CLLocationDistance {
-        let dx = b.x - a.x
-        let dy = b.y - a.y
-        let lengthSquared = (dx * dx) + (dy * dy)
-
-        guard lengthSquared > 0 else {
-            return point.distance(to: a)
-        }
-
-        let t = max(0, min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared))
-        let projection = MKMapPoint(x: a.x + t * dx, y: a.y + t * dy)
-        return point.distance(to: projection)
     }
 
     private func beginRideLogIfNeeded() {
@@ -552,6 +554,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             weatherSnapshot.windSpeed * 3.6,
             weatherSnapshot.roadRisk
         )
+        let previousBestDistance = voyageLogs.map(\.distance).max() ?? 0
 
         let newLog = VoyageLog(
             id: UUID(),
@@ -563,6 +566,8 @@ final class NavigationDashboardViewModel: ObservableObject {
             weatherSummary: weatherSummary
         )
         voyageLogs.insert(newLog, at: 0)
+        latestRideReward = buildRideCompletionReward(newLog: newLog, previousBestDistance: previousBestDistance)
+        recalculateGrowthWidgets()
         rideLogHealthStatuses[newLog.id] = .syncing
         persistVoyageLogs()
         Task { [rideLogSyncService] in
@@ -602,6 +607,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode([PersistedVoyageLog].self, from: data)
             voyageLogs = decoded.map(\.model).sorted { $0.startTime > $1.startTime }
+            recalculateGrowthWidgets()
         } catch {
             #if DEBUG
             print("Failed to load voyage logs:", error)
@@ -613,6 +619,132 @@ final class NavigationDashboardViewModel: ObservableObject {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return documents.appendingPathComponent(voyageLogsFileName)
+    }
+
+    private func recalculateGrowthWidgets() {
+        weeklyMission = computeWeeklyMission()
+        todayRideSuggestion = computeTodayRideSuggestion()
+    }
+
+    private func computeWeeklyMission() -> WeeklyMissionProgress {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let currentKm = voyageLogs
+            .filter { $0.startTime >= startOfWeek && $0.startTime <= now }
+            .reduce(0) { $0 + $1.distance }
+        return WeeklyMissionProgress(
+            title: "今週40km",
+            targetKm: 40,
+            currentKm: currentKm
+        )
+    }
+
+    private func computeTodayRideSuggestion() -> TodayRideSuggestion? {
+        guard !harbors.isEmpty else { return nil }
+        let targetRange = 10.0...50.0
+        let riskPenalty = weatherSnapshot.warning == .warning ? 8.0 : (weatherSnapshot.warning == .advisory ? 4.0 : 0.0)
+        let targetDistance: Double = {
+            if weatherSnapshot.precipitationStartMinutes != nil { return 12 }
+            if weatherSnapshot.windSpeed >= 9 { return 14 }
+            return 18
+        }()
+        let candidatePool = harbors.filter { targetRange.contains($0.distance) }
+        guard !candidatePool.isEmpty else { return nil }
+
+        let candidate = candidatePool.min { lhs, rhs in
+            suggestionScore(for: lhs, targetDistance: targetDistance, riskPenalty: riskPenalty)
+                < suggestionScore(for: rhs, targetDistance: targetDistance, riskPenalty: riskPenalty)
+        }
+
+        guard let harbor = candidate else { return nil }
+        let subtitle = "約\(String(format: "%.1f", harbor.distance))km・ETA\(harbor.etaMinutes)分 / \(weatherSnapshot.condition)"
+        return TodayRideSuggestion(
+            harbor: harbor,
+            title: "今日の1本: \(harbor.name)",
+            subtitle: subtitle
+        )
+    }
+
+    private func suggestionScore(
+        for harbor: Harbor,
+        targetDistance: Double,
+        riskPenalty: Double
+    ) -> Double {
+        let distanceScore = abs(harbor.distance - targetDistance)
+        let restrictionScore = Double(harbor.restrictions.count) * 0.6
+        return distanceScore + restrictionScore + riskPenalty
+    }
+
+    private func buildRideCompletionReward(
+        newLog: VoyageLog,
+        previousBestDistance: Double
+    ) -> RideCompletionReward {
+        var badges: [String] = []
+        if newLog.distance >= 30 {
+            badges.append("ロングライド")
+        } else if newLog.distance >= 15 {
+            badges.append("ミドルライド")
+        } else {
+            badges.append("ショートライド")
+        }
+        if newLog.distance > previousBestDistance {
+            badges.append("自己最長更新")
+        }
+        let remaining = max(weeklyMission.targetKm - (weeklyMission.currentKm + newLog.distance), 0)
+        if remaining <= 0 {
+            badges.append("週次ミッション達成")
+        } else {
+            badges.append("目標まで\(String(format: "%.1f", remaining))km")
+        }
+        return RideCompletionReward(
+            title: "ライド完了おつかれさま",
+            subtitle: String(format: "%.1fkm / 平均%.1fkm/h", newLog.distance, newLog.averageSpeed),
+            badges: badges
+        )
+    }
+}
+
+enum RouteGeometry {
+    static func distanceFromRoute(
+        _ point: CLLocationCoordinate2D,
+        route: [CLLocationCoordinate2D]
+    ) -> CLLocationDistance {
+        guard route.count > 1 else {
+            guard let only = route.first else { return .greatestFiniteMagnitude }
+            return point.distance(to: only)
+        }
+
+        let pointMap = MKMapPoint(point)
+        var best = CLLocationDistance.greatestFiniteMagnitude
+
+        for index in 1..<route.count {
+            let a = MKMapPoint(route[index - 1])
+            let b = MKMapPoint(route[index])
+            let distance = distanceFromPointToSegment(point: pointMap, a: a, b: b)
+            if distance < best {
+                best = distance
+            }
+        }
+        return best
+    }
+
+    private static func distanceFromPointToSegment(
+        point: MKMapPoint,
+        a: MKMapPoint,
+        b: MKMapPoint
+    ) -> CLLocationDistance {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let lengthSquared = (dx * dx) + (dy * dy)
+
+        guard lengthSquared > 0 else {
+            return point.distance(to: a)
+        }
+
+        let t = max(0, min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared))
+        let projection = MKMapPoint(x: a.x + t * dx, y: a.y + t * dy)
+        return point.distance(to: projection)
     }
 }
 

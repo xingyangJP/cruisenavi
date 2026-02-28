@@ -32,7 +32,20 @@
 		D3A4F0012EC11F4E005AD04B /* RoutePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */; };
 		D3A4F0052EC1302C005AD04B /* RoutePreviewLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */; };
 		D4A100022ED0000000000001 /* HealthWorkoutSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A100012ED0000000000001 /* HealthWorkoutSyncService.swift */; };
+		E10000012F00000100AAA001 /* RideLaneSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10000032F00000100AAA001 /* RideLaneSmokeTests.swift */; };
+		E10000022F00000100AAA001 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E10000052F00000100AAA001 /* XCTest.framework */; };
+		E20000012F00000100BBB001 /* OnboardingWalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E100000A2F00000100AAA001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D35EAC6E2EBF176E0093DFC9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D35EAC752EBF176E0093DFC9;
+			remoteInfo = RideLane;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		D3046AAC2EBF1F0F00E1A497 /* SeaNaviApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeaNaviApp.swift; sourceTree = "<group>"; };
@@ -61,6 +74,10 @@
 		D3A4F0002EC11F4E005AD04B /* RoutePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewView.swift; sourceTree = "<group>"; };
 		D3A4F0042EC1302C005AD04B /* RoutePreviewLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePreviewLoadingView.swift; sourceTree = "<group>"; };
 		D4A100012ED0000000000001 /* HealthWorkoutSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthWorkoutSyncService.swift; sourceTree = "<group>"; };
+		E10000032F00000100AAA001 /* RideLaneSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideLaneSmokeTests.swift; sourceTree = "<group>"; };
+		E10000042F00000100AAA001 /* RideLaneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RideLaneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E10000052F00000100AAA001 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWalkthroughView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -76,6 +93,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E10000082F00000100AAA001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E10000022F00000100AAA001 /* XCTest.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,6 +136,7 @@
 			children = (
 				D3046AB22EBF1F0F00E1A497 /* NavigationDashboardView.swift */,
 				D3046AB32EBF1F0F00E1A497 /* NavigationDashboardViewModel.swift */,
+				E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */,
 				D3046AB42EBF1F0F00E1A497 /* SeaMapView.swift */,
 			);
 			path = Navigation;
@@ -224,10 +250,12 @@
 		D35EAC6D2EBF176E0093DFC9 = {
 			isa = PBXGroup;
 			children = (
+				E10000072F00000100AAA001 /* Frameworks */,
 				D3046AD42EBF1FC500E1A497 /* Weather.plist */,
 				D35EAC782EBF176E0093DFC9 /* SeaNavi */,
 				D35EAC772EBF176E0093DFC9 /* Products */,
 				D3046AC52EBF1F0F00E1A497 /* Sources */,
+				E10000062F00000100AAA001 /* RideLaneTests */,
 				D35300152EC1BA0500F3CA59 /* Recovered References */,
 			);
 			sourceTree = "<group>";
@@ -236,6 +264,7 @@
 			isa = PBXGroup;
 			children = (
 				D35EAC762EBF176E0093DFC9 /* RideLane.app */,
+				E10000042F00000100AAA001 /* RideLaneTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -276,6 +305,22 @@
 			path = Health;
 			sourceTree = "<group>";
 		};
+		E10000062F00000100AAA001 /* RideLaneTests */ = {
+			isa = PBXGroup;
+			children = (
+				E10000032F00000100AAA001 /* RideLaneSmokeTests.swift */,
+			);
+			path = RideLaneTests;
+			sourceTree = "<group>";
+		};
+		E10000072F00000100AAA001 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E10000052F00000100AAA001 /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -301,6 +346,26 @@
 			productReference = D35EAC762EBF176E0093DFC9 /* RideLane.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E10000092F00000100AAA001 /* RideLaneTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E10000102F00000100AAA001 /* Build configuration list for PBXNativeTarget "RideLaneTests" */;
+			buildPhases = (
+				E100000D2F00000100AAA001 /* Sources */,
+				E10000082F00000100AAA001 /* Frameworks */,
+				E100000C2F00000100AAA001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E100000B2F00000100AAA001 /* PBXTargetDependency */,
+			);
+			name = RideLaneTests;
+			packageProductDependencies = (
+			);
+			productName = RideLaneTests;
+			productReference = E10000042F00000100AAA001 /* RideLaneTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -313,6 +378,10 @@
 				TargetAttributes = {
 					D35EAC752EBF176E0093DFC9 = {
 						CreatedOnToolsVersion = 26.0.1;
+					};
+					E10000092F00000100AAA001 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = D35EAC752EBF176E0093DFC9;
 					};
 				};
 			};
@@ -332,6 +401,7 @@
 			projectRoot = "";
 			targets = (
 				D35EAC752EBF176E0093DFC9 /* RideLane */,
+				E10000092F00000100AAA001 /* RideLaneTests */,
 			);
 		};
 /* End PBXProject section */
@@ -342,6 +412,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3046AD52EBF1FC500E1A497 /* Weather.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E100000C2F00000100AAA001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -370,6 +447,7 @@
 				D38651412EC030350013CA16 /* DestinationSearchView.swift in Sources */,
 				D38651422EC030350013CA16 /* DestinationSearchViewModel.swift in Sources */,
 				D3046ACE2EBF1F0F00E1A497 /* NavigationDashboardView.swift in Sources */,
+				E20000012F00000100BBB001 /* OnboardingWalkthroughView.swift in Sources */,
 				D3046ACF2EBF1F0F00E1A497 /* WeatherCardView.swift in Sources */,
 				D4A100022ED0000000000001 /* HealthWorkoutSyncService.swift in Sources */,
 				D3046AD02EBF1F0F00E1A497 /* SeaNaviApp.swift in Sources */,
@@ -379,7 +457,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E100000D2F00000100AAA001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E10000012F00000100AAA001 /* RideLaneSmokeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E100000B2F00000100AAA001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D35EAC752EBF176E0093DFC9 /* RideLane */;
+			targetProxy = E100000A2F00000100AAA001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D35EAC7F2EBF176F0093DFC9 /* Debug */ = {
@@ -530,7 +624,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.58;
+				MARKETING_VERSION = 1.0.78;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -572,7 +666,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.58;
+				MARKETING_VERSION = 1.0.78;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -586,6 +680,63 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E100000E2F00000100AAA001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.78;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RideLane.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RideLane";
+			};
+			name = Debug;
+		};
+		E100000F2F00000100AAA001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BGC65S8NX7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.78;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RideLane.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RideLane";
 			};
 			name = Release;
 		};
@@ -606,6 +757,15 @@
 			buildConfigurations = (
 				D35EAC822EBF176F0093DFC9 /* Debug */,
 				D35EAC832EBF176F0093DFC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E10000102F00000100AAA001 /* Build configuration list for PBXNativeTarget "RideLaneTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E100000E2F00000100AAA001 /* Debug */,
+				E100000F2F00000100AAA001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

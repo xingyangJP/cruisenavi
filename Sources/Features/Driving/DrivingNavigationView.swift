@@ -2,6 +2,68 @@ import SwiftUI
 import MapKit
 import UIKit
 
+struct RouteProgressUpdate {
+    let remainingRoute: [CLLocationCoordinate2D]
+    let remainingDistanceKm: Double
+}
+
+enum RouteProgressEstimator {
+    static func remainingProgress(
+        currentCoordinate: CLLocationCoordinate2D,
+        route: [CLLocationCoordinate2D]
+    ) -> RouteProgressUpdate {
+        guard route.count > 1 else {
+            let connectorMeters = currentCoordinate.distance(to: route.first ?? currentCoordinate)
+            return RouteProgressUpdate(
+                remainingRoute: route,
+                remainingDistanceKm: max(connectorMeters / 1000.0, 0)
+            )
+        }
+
+        let nearestIndex = nearestRouteIndex(to: currentCoordinate, in: route)
+        guard nearestIndex >= 0 else {
+            return RouteProgressUpdate(
+                remainingRoute: route,
+                remainingDistanceKm: max(pathDistanceMeters(of: route) / 1000.0, 0)
+            )
+        }
+
+        let remainingRoute = nearestIndex > 0 ? Array(route.dropFirst(nearestIndex)) : route
+        let routeDistanceMeters = pathDistanceMeters(of: remainingRoute)
+        let connectorMeters = currentCoordinate.distance(to: remainingRoute.first ?? currentCoordinate)
+        return RouteProgressUpdate(
+            remainingRoute: remainingRoute,
+            remainingDistanceKm: max((routeDistanceMeters + connectorMeters) / 1000.0, 0)
+        )
+    }
+
+    static func nearestRouteIndex(
+        to coordinate: CLLocationCoordinate2D,
+        in route: [CLLocationCoordinate2D]
+    ) -> Int {
+        guard !route.isEmpty else { return -1 }
+        var nearestIndex = 0
+        var nearestDistance = CLLocationDistance.greatestFiniteMagnitude
+        for (index, point) in route.enumerated() {
+            let distance = coordinate.distance(to: point)
+            if distance < nearestDistance {
+                nearestDistance = distance
+                nearestIndex = index
+            }
+        }
+        return nearestIndex
+    }
+
+    static func pathDistanceMeters(of route: [CLLocationCoordinate2D]) -> CLLocationDistance {
+        guard route.count > 1 else { return 0 }
+        var total: CLLocationDistance = 0
+        for index in 1..<route.count {
+            total += route[index - 1].distance(to: route[index])
+        }
+        return total
+    }
+}
+
 struct DrivingNavigationView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
@@ -122,48 +184,12 @@ struct DrivingNavigationView: View {
 
     private func updateRemainingRoute(with location: CLLocation) {
         guard remainingRouteCoordinates.count > 1 else { return }
-
-        let currentCoordinate = location.coordinate
-        let nearestIndex = nearestRouteIndex(to: currentCoordinate, in: remainingRouteCoordinates)
-        guard nearestIndex >= 0 else { return }
-
-        if nearestIndex > 0 {
-            remainingRouteCoordinates = Array(remainingRouteCoordinates.dropFirst(nearestIndex))
-        }
-
-        let routeDistanceMeters = pathDistance(of: remainingRouteCoordinates)
-        let connectorMeters: Double = {
-            guard let head = remainingRouteCoordinates.first else { return 0 }
-            return currentCoordinate.distance(to: head)
-        }()
-
-        remainingDistanceKm = max((routeDistanceMeters + connectorMeters) / 1000.0, 0)
-    }
-
-    private func nearestRouteIndex(
-        to coordinate: CLLocationCoordinate2D,
-        in route: [CLLocationCoordinate2D]
-    ) -> Int {
-        guard !route.isEmpty else { return -1 }
-        var nearestIndex = 0
-        var nearestDistance = CLLocationDistance.greatestFiniteMagnitude
-        for (index, point) in route.enumerated() {
-            let distance = coordinate.distance(to: point)
-            if distance < nearestDistance {
-                nearestDistance = distance
-                nearestIndex = index
-            }
-        }
-        return nearestIndex
-    }
-
-    private func pathDistance(of route: [CLLocationCoordinate2D]) -> CLLocationDistance {
-        guard route.count > 1 else { return 0 }
-        var total: CLLocationDistance = 0
-        for index in 1..<route.count {
-            total += route[index - 1].distance(to: route[index])
-        }
-        return total
+        let progress = RouteProgressEstimator.remainingProgress(
+            currentCoordinate: location.coordinate,
+            route: remainingRouteCoordinates
+        )
+        remainingRouteCoordinates = progress.remainingRoute
+        remainingDistanceKm = progress.remainingDistanceKm
     }
 
     private func zoomIn() {
