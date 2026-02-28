@@ -5,6 +5,7 @@ import FirebaseAnalytics
 
 struct NavigationDashboardView: View {
     @ObservedObject var viewModel: NavigationDashboardViewModel
+    @StateObject private var favoriteStore = FavoriteDestinationStore.shared
     @State private var showDestinationSheet = false
     @State private var showDrivingMode = false
     @State private var showRoutePreview = false
@@ -91,6 +92,18 @@ struct NavigationDashboardView: View {
                             }
                         }
 
+                        HomeFavoritesCard(
+                            favorites: favoriteStore.harborList(origin: viewModel.locationService.currentCoordinateOrDefault()),
+                            onStart: { harbor in
+                                favoriteStore.markUsed(harbor)
+                                viewModel.startNavigation(to: harbor, mode: .flat)
+                                showRoutePreview = true
+                            },
+                            onRemove: { harbor in
+                                favoriteStore.remove(harbor)
+                            }
+                        )
+
                         WeeklyMissionCard(mission: viewModel.weeklyMission)
 
                         Button {
@@ -138,7 +151,7 @@ struct NavigationDashboardView: View {
                     .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
             }
-            .overlay(alignment: .topLeading) {
+            .overlay(alignment: .topTrailing) {
                 Button {
                     showSettingsSheet = true
                 } label: {
@@ -150,7 +163,7 @@ struct NavigationDashboardView: View {
                         .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1))
                 }
                 .padding(.top, 58)
-                .padding(.leading, 16)
+                .padding(.trailing, 16)
             }
 
             if showWalkthrough {
@@ -303,7 +316,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.83"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.84"
         return "ver\(version)"
     }
 
@@ -349,6 +362,56 @@ struct NavigationDashboardView: View {
     private func finishWalkthrough() {
         walkthroughCompleted = true
         showWalkthrough = false
+    }
+}
+
+private struct HomeFavoritesCard: View {
+    let favorites: [Harbor]
+    let onStart: (Harbor) -> Void
+    let onRemove: (Harbor) -> Void
+
+    var body: some View {
+        if !favorites.isEmpty {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("お気に入りから出発", systemImage: "star.fill")
+                        .font(.headline)
+                        .foregroundStyle(Color.citrusPrimaryText)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(favorites.prefix(5)) { harbor in
+                                Button {
+                                    onStart(harbor)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(harbor.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .lineLimit(1)
+                                        Text(String(format: "%.1f km", harbor.distance))
+                                            .font(.caption)
+                                            .foregroundStyle(Color.citrusSecondaryText)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .frame(width: 170, alignment: .leading)
+                                    .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        onRemove(harbor)
+                                    } label: {
+                                        Label("お気に入りから削除", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+        }
     }
 }
 

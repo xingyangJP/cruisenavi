@@ -26,6 +26,10 @@ final class DestinationSearchViewModel: ObservableObject {
         scheduleSearch()
     }
 
+    var origin: CLLocationCoordinate2D {
+        locationService.currentCoordinateOrDefault()
+    }
+
     var isTextSearchActive: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

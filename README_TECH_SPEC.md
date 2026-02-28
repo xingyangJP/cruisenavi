@@ -1,5 +1,5 @@
 # RideLane 技術仕様
-バージョン: 1.0.83  
+バージョン: 1.0.84  
 更新日: 2026-02-28
 
 ## 1. アーキテクチャ
@@ -13,6 +13,7 @@
 2. `DestinationSearchViewModel` が検索種別に応じた距離範囲でスポットを取得（おすすめ: 10〜100km / テキスト検索: 200km圏内）
 3. `MapKitRoadRoutePlanner` が道路ルートを段階的リトライで計算
 4. `RoutePreviewView` で全体確認後、`DrivingNavigationView` で案内開始
+5. `FavoriteDestinationStore` がお気に入り目的地を永続化し、Home/目的地検索の両方で再利用
 
 ## 3. ルーティング仕様
 - 交通手段候補:
@@ -40,6 +41,14 @@
 - `DrivingNavigationView` 表示中は `UIApplication.shared.isIdleTimerDisabled = true` で自動スリープを抑止し、離脱時に解除
 - 目的地まで 45m 以内、または残距離 0.08km 以下で到着と判定し、到着メッセージを一度だけ表示（4秒で自動非表示）
 
+## 4.2 お気に入り目的地仕様
+- `FavoriteDestinationStore`（UserDefaults保存）でお気に入りを永続化
+- 識別キーは `name + rounded(lat/lon)` で生成し、同一地点の重複保存を防止
+- 目的地検索の結果行で `☆` トグルにより保存/解除
+- 目的地検索画面の先頭に `お気に入り` セクションを常時表示
+- Home に `お気に入りから出発` 横スクロール（最大5件）を表示し、1タップでナビ開始
+- お気に入りから開始した場合は `lastUsedAt` を更新して表示順に反映
+
 ## 5. 天気仕様
 - WeatherKit を第一優先で使用して天候/風速/風向を取得（風速は m/s 表示）
 - WeatherKit 失敗時は OpenWeather（`2.5/weather`）へフォールバック
@@ -58,7 +67,7 @@
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.83`
+- バージョン: `MARKETING_VERSION = 1.0.84`
 
 ## 8. オンボーディング（ウォークスルー）
 - `NavigationDashboardView` で初回起動時にオーバーレイ型ウォークスルーを表示
@@ -81,7 +90,7 @@
   - ナビ終了時に新規ログからバッジを生成し、ハイライトシートを表示
 
 ## 10. 法務ページ表示仕様
-- Home 左上の設定シートから `利用規約` / `プライバシー` を選択して `WKWebView` シートを開く
+- Home 右上の設定シートから `利用規約` / `プライバシー` を選択して `WKWebView` シートを開く
 - 読み込み先URL:
   - `https://lp.xerographix.co.jp/ridelane/terms.html`
   - `https://lp.xerographix.co.jp/ridelane/privacy.html`
@@ -90,7 +99,7 @@
 - DOMスクリプトで `RideLane トップへ戻る` 文言を持つリンク/ボタンを非表示化
 
 ## 11. Health連携説明・同意仕様
-- Home 左上の設定シートの `Health連携について` から説明シートを開く
+- Home 右上の設定シートの `Health連携について` から説明シートを開く
 - 説明シートには `同期するデータ` / `利用目的` / `しないこと` を明記
 - トグル `Apple Healthに同期する` がOFFの間は、ナビ終了時にHealthKit保存を実行しない
 - OFF時のライドログ状態は `Health連携オフ` として記録

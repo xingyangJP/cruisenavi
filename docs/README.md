@@ -9,6 +9,7 @@
 - `docs/WALKTHROUGH_DAU_PLAN.md`: DL直後ユーザー向けウォークスルー施策（DAU向上計画）
 - `docs/TERMS_OF_SERVICE_DRAFT.md`: 利用規約ドラフト（公開前に法務レビュー前提）
 - `docs/PRIVACY_POLICY_DRAFT.md`: プライバシーポリシードラフト（公開前に法務レビュー前提）
+- `docs/FIREBASE_ANALYTICS_IMPLEMENTATION_GUIDE.md`: Firebase Analytics 実装ガイド（iOS/SwiftUI汎用）
 
 ## README 系ドキュメント（ルート配置）
 - `README.md`: 要件定義

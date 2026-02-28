@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import MapKit
+import Combine
 
 struct Harbor: Identifiable {
     let id: UUID
@@ -111,5 +112,128 @@ extension Harbor {
             distance: distanceKm,
             etaMinutes: eta
         )
+    }
+}
+
+struct FavoriteDestination: Identifiable, Codable, Hashable {
+    let id: String
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    var lastUsedAt: Date
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    init(name: String, coordinate: CLLocationCoordinate2D, lastUsedAt: Date = .now) {
+        self.id = FavoriteDestination.makeID(name: name, coordinate: coordinate)
+        self.name = name
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
+        self.lastUsedAt = lastUsedAt
+    }
+
+    private static func makeID(name: String, coordinate: CLLocationCoordinate2D) -> String {
+        let normalizedName = name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let lat = (coordinate.latitude * 10_000).rounded() / 10_000
+        let lon = (coordinate.longitude * 10_000).rounded() / 10_000
+        return "\(normalizedName)_\(lat)_\(lon)"
+    }
+}
+
+@MainActor
+final class FavoriteDestinationStore: ObservableObject {
+    static let shared = FavoriteDestinationStore()
+
+    @Published private(set) var favorites: [FavoriteDestination] = []
+    private let userDefaults: UserDefaults
+    private let key = "favorite.destinations.v1"
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        load()
+    }
+
+    func isFavorite(_ harbor: Harbor) -> Bool {
+        let candidate = FavoriteDestination(name: harbor.name, coordinate: harbor.coordinate)
+        return favorites.contains(where: { $0.id == candidate.id })
+    }
+
+    func toggle(_ harbor: Harbor) {
+        if isFavorite(harbor) {
+            remove(harbor)
+        } else {
+            addOrUpdate(harbor)
+        }
+    }
+
+    func addOrUpdate(_ harbor: Harbor) {
+        let candidate = FavoriteDestination(name: harbor.name, coordinate: harbor.coordinate)
+        if let index = favorites.firstIndex(where: { $0.id == candidate.id }) {
+            favorites[index].lastUsedAt = .now
+        } else {
+            favorites.append(candidate)
+        }
+        sortAndPersist()
+    }
+
+    func remove(_ harbor: Harbor) {
+        let candidate = FavoriteDestination(name: harbor.name, coordinate: harbor.coordinate)
+        favorites.removeAll { $0.id == candidate.id }
+        sortAndPersist()
+    }
+
+    func markUsed(_ harbor: Harbor) {
+        let candidate = FavoriteDestination(name: harbor.name, coordinate: harbor.coordinate)
+        guard let index = favorites.firstIndex(where: { $0.id == candidate.id }) else { return }
+        favorites[index].lastUsedAt = .now
+        sortAndPersist()
+    }
+
+    func harborList(origin: CLLocationCoordinate2D) -> [Harbor] {
+        favorites
+            .map { favorite in
+                let distanceMeters = favorite.coordinate.distance(to: origin)
+                let distanceKm = distanceMeters / 1000.0
+                let eta = max(Int(distanceMeters / (18.0 / 3.6) / 60), 5)
+                return Harbor(
+                    name: favorite.name,
+                    coordinate: favorite.coordinate,
+                    facilities: ["お気に入り"],
+                    restrictions: [],
+                    distance: distanceKm,
+                    etaMinutes: eta
+                )
+            }
+            .sorted { $0.distance < $1.distance }
+    }
+
+    private func sortAndPersist() {
+        favorites.sort { $0.lastUsedAt > $1.lastUsedAt }
+        persist()
+    }
+
+    private func load() {
+        guard let data = userDefaults.data(forKey: key) else { return }
+        do {
+            favorites = try JSONDecoder().decode([FavoriteDestination].self, from: data)
+            favorites.sort { $0.lastUsedAt > $1.lastUsedAt }
+        } catch {
+            favorites = []
+        }
+    }
+
+    private func persist() {
+        do {
+            let data = try JSONEncoder().encode(favorites)
+            userDefaults.set(data, forKey: key)
+        } catch {
+            #if DEBUG
+            print("Failed to save favorite destinations:", error)
+            #endif
+        }
     }
 }
