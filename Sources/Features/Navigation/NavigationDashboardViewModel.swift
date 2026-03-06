@@ -553,7 +553,8 @@ final class NavigationDashboardViewModel: ObservableObject {
         let endTime = Date()
         let startIndex = min(activeRideStartRouteIndex ?? 0, locationService.routePoints.count)
         let capturedRoute = Array(locationService.routePoints.dropFirst(startIndex))
-        let distanceMeters = routeDistance(capturedRoute)
+        let resolvedRoute = resolvedRideLogRoute(from: capturedRoute)
+        let distanceMeters = routeDistance(resolvedRoute)
         let duration = max(endTime.timeIntervalSince(startTime), 1)
         let averageSpeedKmh = (distanceMeters / duration) * 3.6
         let weatherSummary = String(
@@ -568,7 +569,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             id: UUID(),
             startTime: startTime,
             endTime: endTime,
-            routePoints: capturedRoute,
+            routePoints: resolvedRoute,
             distance: distanceMeters / 1000.0,
             averageSpeed: averageSpeedKmh,
             weatherSummary: weatherSummary
@@ -599,6 +600,24 @@ final class NavigationDashboardViewModel: ObservableObject {
 
         activeRideStartTime = nil
         activeRideStartRouteIndex = nil
+    }
+
+    private func resolvedRideLogRoute(from capturedRoute: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
+        // Some rides can end with too few GPS samples (e.g. poor fix at start/end), which renders as a straight line.
+        // In that case, fallback to the active navigation route geometry so the detail map keeps route shape.
+        if capturedRoute.count >= 3 {
+            return capturedRoute
+        }
+
+        let fallbackRoute = routeSummary?.routeCoordinates ?? pendingRoute?.routeCoordinates ?? []
+        guard fallbackRoute.count > capturedRoute.count else {
+            return capturedRoute
+        }
+
+        #if DEBUG
+        print("Ride log route fallback applied: captured=\(capturedRoute.count), fallback=\(fallbackRoute.count)")
+        #endif
+        return fallbackRoute
     }
 
     private func persistVoyageLogs() {

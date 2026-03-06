@@ -1,5 +1,5 @@
 # RideLane テスト手順
-バージョン: 1.0.84  
+バージョン: 1.0.87  
 更新日: 2026-02-28
 
 ## 1. 前提
@@ -19,11 +19,11 @@ cd /Users/xingyang/cruisenavi
 xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test
 ```
 ## 4. 手動確認
-1. アプリ起動で Home 表示、下部中央バージョンが `ver1.0.84` になっている
+1. アプリ起動で Home 表示、下部中央バージョンが `ver1.0.87` になっている
 2. Home の現在地地図がタイトルなし・角丸なしで横幅いっぱい表示になっている
 3. Home 地図の上部中央に `splash` ロゴが表示される
 4. Home 地図下に `ルートポイント` / `実GPS` / `GPSアクティブ` などのステータス文言が表示されていない
-5. Home の `ver1.0.84` 表示が中央寄せになっている
+5. Home の `ver1.0.87` 表示が中央寄せになっている
 6. 初回起動時にウォークスルー（5ステップ）が表示される
 7. シミュレーターではウォークスルー完了後も再起動で再表示される（検証用挙動）
 8. 実機ではウォークスルーを完了またはスキップ後、再起動しても再表示されない
@@ -50,24 +50,27 @@ xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'pla
 29. 意図的にルートを外れると自動再ルートされ、短時間で連続再ルートしない
 30. 位置情報 OFF 時に追跡状態が「位置情報なし」になる
 31. 天気カードに天候・風速（m/s）・風向・路面リスクが表示される
-32. 降雨が予測される場合「xx分後に雨が降る見込み」と表示される
-33. ナビ終了後、Health 許可ダイアログを許可すると Apple Health にワークアウト（自転車）が追加される
-34. ナビ開始前のプレビューまたはナビ中で、30〜60分先降雨がある場合に `雨回避アラート` バナーが表示される
-35. `回避ルート提案` を押すと平坦優先で再ルートされ、ルートが更新される
-36. Home 右上の設定アイコンをタップすると設定シートが開く
-37. 設定シートの `利用規約` を開くとアプリ内シートで `https://lp.xerographix.co.jp/ridelane/terms.html` が表示される
-38. 設定シートの `プライバシーポリシー` を開くとアプリ内シートで `https://lp.xerographix.co.jp/ridelane/privacy.html` が表示される
-39. 法務ページ内で `RideLane トップへ戻る` ボタンが表示されない
-40. 一度オンラインで法務ページを開いた後、機内モードで再度開いてもページ内容が表示される（キャッシュ表示）
-41. 設定シートの `Health連携について` を開くと、同期データ・利用目的・しないことの説明が表示される
-42. `Apple Healthに同期する` をOFFにしてライド終了すると、ログ状態が `Health連携オフ` になる
-43. `Apple Healthに同期する` をONにしてライド終了すると、従来どおりHealth同期フロー（許可ダイアログ/同期状態表示）が動作する
-44. Home表示時に `home_view` Analyticsイベントが送信される（DebugViewまたはXcodeログで確認）
-45. ルートプレビューを開くと `route_preview_open` が送信される（`route_mode`, `distance_km`, `eta_min`）
-46. プレビューの「スタート」押下で `nav_start` が送信される（`route_mode`, `distance_km`, `eta_min`）
-47. ライド終了後に `ride_complete` が送信される（`distance_km`, `avg_speed_kmh`, `badge_count`, `health_sync_enabled`）
-48. 目的地に到着すると、ナビ画面下部に到着メッセージバナーが表示される
-49. 到着メッセージは約4秒後に自動で非表示になる
+32. 天気カード下部に ` Weather` と `https://weatherkit.apple.com/legal-attribution.html` のリンク表示があり、タップで開ける
+33. 降雨が予測される場合「xx分後に雨が降る見込み」と表示される
+34. ナビ終了後、Health 許可ダイアログを許可すると Apple Health にワークアウト（自転車）が追加される
+35. ナビ開始前のプレビューまたはナビ中で、30〜60分先降雨がある場合に `雨回避アラート` バナーが表示される
+36. `回避ルート提案` を押すと平坦優先で再ルートされ、ルートが更新される
+37. Home 右上の設定アイコンをタップすると設定シートが開く
+38. 設定シートの `利用規約` を開くとアプリ内シートで `https://lp.xerographix.co.jp/ridelane/terms.html` が表示される
+39. 設定シートの `プライバシーポリシー` を開くとアプリ内シートで `https://lp.xerographix.co.jp/ridelane/privacy.html` が表示される
+40. 法務ページ内で `RideLane トップへ戻る` ボタンが表示されない
+41. 一度オンラインで法務ページを開いた後、機内モードで再度開いてもページ内容が表示される（キャッシュ表示）
+42. 設定シートの `Health連携について` を開くと、同期データ・利用目的・しないことの説明が表示される
+43. `Apple Healthに同期する` をOFFにしてライド終了すると、ログ状態が `Health連携オフ` になる
+44. `Apple Healthに同期する` をONにしてライド終了すると、従来どおりHealth同期フロー（許可ダイアログ/同期状態表示）が動作する
+45. Home表示時に `home_view` Analyticsイベントが送信される（DebugViewまたはXcodeログで確認）
+46. ルートプレビューを開くと `route_preview_open` が送信される（`route_mode`, `distance_km`, `eta_min`）
+47. プレビューの「スタート」押下で `nav_start` が送信される（`route_mode`, `distance_km`, `eta_min`）
+48. ライド終了後に `ride_complete` が送信される（`distance_km`, `avg_speed_kmh`, `badge_count`, `health_sync_enabled`）
+49. 目的地に到着すると、ナビ画面下部に到着メッセージバナーが表示される
+50. 到着メッセージは約4秒後に自動で非表示になる
+51. ライド詳細の地図で軌跡が始点終点の単純な直線にならず、ルート形状として表示される（短時間ライド含む）
+52. 目的地到着時（残距離 `0.0km` 表示付近）に赤い終了ボタンを押さなくても、到着メッセージ表示後に自動でナビ終了し、ライドハイライトが表示される
 
 ## 5. ログ確認
 - ルート失敗時に警告文が表示されること

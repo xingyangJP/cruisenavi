@@ -82,6 +82,7 @@ struct DrivingNavigationView: View {
     @State private var hasShownArrivalMessage = false
     @State private var showArrivalMessage = false
     @State private var arrivalMessage: String?
+    @State private var hasTriggeredAutoExit = false
 
     init(
         destination: Harbor,
@@ -131,12 +132,15 @@ struct DrivingNavigationView: View {
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
                     updateRemainingRoute(with: newLocation)
-                    evaluateArrival(with: newLocation)
+                    evaluateArrival()
                     if !hasShownArrivalMessage {
                         onRerouteRequest(newLocation, remainingRouteCoordinates)
                     }
                 }
                 focusCameraOnUser(animated: true)
+            }
+            .onChange(of: remainingDistanceKm) { _, _ in
+                evaluateArrival()
             }
             .onChange(of: locationService.heading) { _, _ in
                 focusCameraOnUser(animated: true)
@@ -205,10 +209,19 @@ struct DrivingNavigationView: View {
         remainingDistanceKm = progress.remainingDistanceKm
     }
 
-    private func evaluateArrival(with location: CLLocation) {
+    private func evaluateArrival() {
         guard !hasShownArrivalMessage else { return }
-        let distanceToDestination = location.coordinate.distance(to: destination.coordinate)
-        let isArrived = distanceToDestination <= 45 || remainingDistanceKm <= 0.08
+        let distanceToDestination: CLLocationDistance = {
+            if let coordinate = locationService.currentLocation?.coordinate {
+                return coordinate.distance(to: destination.coordinate)
+            }
+            if let routeEnd = remainingRouteCoordinates.last {
+                return routeEnd.distance(to: destination.coordinate)
+            }
+            return .greatestFiniteMagnitude
+        }()
+        let isArrivedByRoute = remainingDistanceKm <= 0.08 || remainingRouteCoordinates.count <= 1
+        let isArrived = distanceToDestination <= 45 || isArrivedByRoute
         guard isArrived else { return }
 
         hasShownArrivalMessage = true
@@ -222,6 +235,15 @@ struct DrivingNavigationView: View {
             withAnimation(.easeInOut(duration: 0.25)) {
                 showArrivalMessage = false
             }
+        }
+        triggerAutoExitAfterArrival()
+    }
+
+    private func triggerAutoExitAfterArrival() {
+        guard !hasTriggeredAutoExit else { return }
+        hasTriggeredAutoExit = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            onExit()
         }
     }
 

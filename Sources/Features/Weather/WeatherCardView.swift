@@ -50,6 +50,8 @@ struct WeatherCardView: View {
                     metricPill("風向", snapshot.windCompass, icon: "location.north.line")
                     metricPill("路面", String(format: "%.1f", snapshot.roadRisk), icon: "exclamationmark.road.lane")
                 }
+
+                attributionRow
             }
             .padding(20)
         }
@@ -110,5 +112,22 @@ struct WeatherCardView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(Color.white.opacity(0.18), in: Capsule())
+    }
+
+    private var attributionRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Weather data:  Weather")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.95))
+
+            Link("https://weatherkit.apple.com/legal-attribution.html",
+                 destination: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.9))
+                .underline()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(.top, 2)
     }
 }

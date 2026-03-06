@@ -373,3 +373,18 @@
 - Git管理対象外ファイル対策: `.gitignore` に `.DS_Store`（全階層）/エディタ一時ファイル（`*.swp`, `*.tmp`）/IDE設定（`.idea/`, `.vscode/`）を追加
 - 既に追跡済みだった `.DS_Store`（ルート, `SeaNavi/`, `Sources/`, `Sources/Features/`, `Sources/Services/`）を `git rm --cached` でインデックスから除外
 - 本対応は開発運用改善のみ（アプリ挙動変更なし）。リリース影響: なし
+- 他アプリでも再利用できるよう、法務ページ表示の実装ノウハウを `docs/WKWEBVIEW_LEGAL_CACHE_GUIDE.md` として汎用化（`WKWebView` + キャッシュ + フォールバック + 失敗回避パターン）
+- `docs/README.md` に上記ガイドの索引を追加
+- 本対応はドキュメント更新のみ（コード変更なし）のため、`MARKETING_VERSION` 更新は対象外
+- ライドログ詳細地図で軌跡が直線化する不具合を修正: 保存時の軌跡点が3点未満の場合、`routeSummary.routeCoordinates`（必要に応じて `pendingRoute.routeCoordinates`）で補完して地図形状を維持
+- 追加デバッグログ: 軌跡補完発生時に `captured`/`fallback` 点数を出力
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.85` に同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.84` から `1.0.85` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.85` へ同期
+- ナビ到着演出の自動発火を強化: 到着判定を `currentLocation` 依存から `残距離(<=0.08km)` / `残ルート点数(<=1)` でも成立するよう変更
+- 到着検知後に `おつかれさま` バナー表示を維持しつつ、約2.2秒後に自動でナビ終了（赤い終了ボタンを押さなくてもリワード表示へ遷移）
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.86` に同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.85` から `1.0.86` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.86` へ同期
+- App Store審査 5.2.5 対応: 天気カードに Apple Weather 帰属表示 ` Weather` と法的リンク `https://weatherkit.apple.com/legal-attribution.html` を常時表示
+- 帰属リンクはタップ可能（外部ブラウザ遷移）とし、視認性確保のためカード下部に固定配置
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.87` に同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.86` から `1.0.87` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.87` へ同期
