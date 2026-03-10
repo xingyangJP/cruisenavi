@@ -388,3 +388,8 @@
 - 帰属リンクはタップ可能（外部ブラウザ遷移）とし、視認性確保のためカード下部に固定配置
 - 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.87` に同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.86` から `1.0.87` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.87` へ同期
+- Homeに「休憩スポット提案」カードを追加。走行距離（当日累計）と気象警戒レベルに応じて、休憩推奨タイミング（例: あとx.xkm）を表示
+- 提案スポットは近場候補から休憩向きキーワード（休憩/給水/自販機/ベンチ/カフェ/コンビニ）を優先して1件提示し、ボタンで即ナビ開始可能
+- `NavigationDashboardViewModel` に `RestSpotSuggestion` 計算ロジックを追加し、位置更新と再計算タイミングでリアルタイム更新
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.88` に同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.87` から `1.0.88` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.88` へ同期

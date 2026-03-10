@@ -106,6 +106,13 @@ struct NavigationDashboardView: View {
 
                         WeeklyMissionCard(mission: viewModel.weeklyMission)
 
+                        if let restSuggestion = viewModel.restSpotSuggestion {
+                            RestSpotSuggestionCard(suggestion: restSuggestion) {
+                                viewModel.startNavigation(to: restSuggestion.harbor, mode: .flat)
+                                showRoutePreview = true
+                            }
+                        }
+
                         Button {
                             showDestinationSheet = true
                         } label: {
@@ -316,7 +323,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.87"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.88"
         return "ver\(version)"
     }
 
@@ -463,6 +470,36 @@ private struct WeeklyMissionCard: View {
                 )
                 .font(.subheadline)
                 .foregroundStyle(Color.citrusSecondaryText)
+            }
+        }
+    }
+}
+
+private struct RestSpotSuggestionCard: View {
+    let suggestion: RestSpotSuggestion
+    let onStart: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("休憩スポット提案", systemImage: "cup.and.saucer.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.citrusSecondaryText)
+
+                Text(suggestion.title)
+                    .font(.headline)
+                    .foregroundStyle(Color.citrusPrimaryText)
+
+                Text(suggestion.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.citrusSecondaryText)
+
+                Button(suggestion.shouldRestNow ? "このスポットへ案内" : "休憩ルートを準備") {
+                    onStart()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.citrusAmber)
+                .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
             }
         }
     }
