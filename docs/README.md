@@ -11,6 +11,7 @@
 - `docs/PRIVACY_POLICY_DRAFT.md`: プライバシーポリシードラフト（公開前に法務レビュー前提）
 - `docs/FIREBASE_ANALYTICS_IMPLEMENTATION_GUIDE.md`: Firebase Analytics 実装ガイド（iOS/SwiftUI汎用）
 - `docs/WKWEBVIEW_LEGAL_CACHE_GUIDE.md`: 法務ページの `WKWebView` 表示＋オフラインキャッシュ実装ガイド（iOS汎用）
+- `docs/REST_SPOT_RECOMMENDATION_SPEC.md`: 休憩所レコメンド仕様（お気に入り機能と分離）
 
 ## README 系ドキュメント（ルート配置）
 - `README.md`: 要件定義

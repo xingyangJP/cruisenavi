@@ -393,3 +393,13 @@
 - `NavigationDashboardViewModel` に `RestSpotSuggestion` 計算ロジックを追加し、位置更新と再計算タイミングでリアルタイム更新
 - 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.88` に同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.87` から `1.0.88` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.88` へ同期
+- 休憩所レコメンド仕様を `docs/REST_SPOT_RECOMMENDATION_SPEC.md` として文書化（お気に入りとの分離、表示条件、件数、距離帯ロジック、気象補正、UI、テスト観点）
+- `docs/README.md` に上記仕様書の索引を追加
+- 本対応はドキュメント更新のみ（コード変更なし）のため、`MARKETING_VERSION` 更新は対象外
+- ナビ中の補給リマインド機能を実装: `WeatherSnapshot` に気温（`temperatureCelsius`）を追加し、WeatherKit/OpenWeather取得値を連携
+- `DrivingNavigationView` に補給リマインドロジックを追加（30秒周期判定、速度4km/h以上時のみ表示、気温/速度/警戒レベルで8〜35分の給水間隔を動的算出）
+- 補給リマインドの表示文言を `xx分ごとに給水 / 約xxxkcal/h` に統一し、4秒で自動非表示・警告ハプティクス発火を追加
+- `NavigationDashboardView` からナビ画面へ `weatherSnapshot` を渡す接続を追加
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.89` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.88` から `1.0.89` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.89` へ同期
+- ビルド確認: `xcodebuild -project /Users/xingyang/cruisenavi/SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` が `BUILD SUCCEEDED`

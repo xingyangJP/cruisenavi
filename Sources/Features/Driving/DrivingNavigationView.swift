@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import UIKit
+import Combine
 
 struct RouteProgressUpdate {
     let remainingRoute: [CLLocationCoordinate2D]
@@ -68,6 +69,7 @@ struct DrivingNavigationView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
     let rainAvoidanceAlert: RainAvoidanceAlert?
+    let weatherSnapshot: WeatherSnapshot
     let onExit: () -> Void
     let onChangeDestination: () -> Void
     let onRerouteRequest: (CLLocation, [CLLocationCoordinate2D]) -> Void
@@ -83,11 +85,17 @@ struct DrivingNavigationView: View {
     @State private var showArrivalMessage = false
     @State private var arrivalMessage: String?
     @State private var hasTriggeredAutoExit = false
+    @State private var showHydrationReminder = false
+    @State private var hydrationReminderText = ""
+    @State private var hydrationIntervalMinutes = 20
+    @State private var lastHydrationReminderAt = Date()
+    @State private var hydrationTimer: AnyCancellable?
 
     init(
         destination: Harbor,
         routeSummary: RouteSummary,
         rainAvoidanceAlert: RainAvoidanceAlert?,
+        weatherSnapshot: WeatherSnapshot,
         onExit: @escaping () -> Void,
         onChangeDestination: @escaping () -> Void,
         onRerouteRequest: @escaping (CLLocation, [CLLocationCoordinate2D]) -> Void,
@@ -97,6 +105,7 @@ struct DrivingNavigationView: View {
         self.destination = destination
         self.routeSummary = routeSummary
         self.rainAvoidanceAlert = rainAvoidanceAlert
+        self.weatherSnapshot = weatherSnapshot
         self.onExit = onExit
         self.onChangeDestination = onChangeDestination
         self.onRerouteRequest = onRerouteRequest
@@ -122,12 +131,16 @@ struct DrivingNavigationView: View {
                 locationService.requestAuthorization()
                 locationService.startTracking()
                 setNavigationAwakeMode(enabled: true)
+                refreshHydrationPlan()
+                startHydrationTimer()
                 // When navigation starts, zoom to the start point first.
                 focusCameraOnStart(animated: false)
                 focusCameraOnUser(animated: false)
             }
             .onDisappear {
                 setNavigationAwakeMode(enabled: false)
+                hydrationTimer?.cancel()
+                hydrationTimer = nil
             }
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
@@ -138,6 +151,9 @@ struct DrivingNavigationView: View {
                     }
                 }
                 focusCameraOnUser(animated: true)
+            }
+            .onChange(of: locationService.currentSpeedKmh) { _, _ in
+                refreshHydrationPlan()
             }
             .onChange(of: remainingDistanceKm) { _, _ in
                 evaluateArrival()
@@ -170,6 +186,13 @@ struct DrivingNavigationView: View {
                     rainAvoidanceBanner(alert: rainAvoidanceAlert)
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
+                }
+
+                if showHydrationReminder {
+                    HydrationReminderBanner(message: hydrationReminderText)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 Spacer()
@@ -331,6 +354,81 @@ struct DrivingNavigationView: View {
         UIApplication.shared.isIdleTimerDisabled = enabled
     }
 
+    private func startHydrationTimer() {
+        hydrationTimer?.cancel()
+        hydrationTimer = Timer.publish(every: 30, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                checkHydrationReminder()
+            }
+    }
+
+    private func refreshHydrationPlan() {
+        var interval = 20
+        let temp = weatherSnapshot.temperatureCelsius
+        let speed = locationService.currentSpeedKmh
+
+        if temp >= 30 {
+            interval -= 6
+        } else if temp >= 25 {
+            interval -= 4
+        } else if temp <= 5 {
+            interval += 4
+        }
+
+        if speed >= 25 {
+            interval -= 4
+        } else if speed >= 18 {
+            interval -= 2
+        } else if speed < 10 {
+            interval += 2
+        }
+
+        if weatherSnapshot.warning == .warning {
+            interval -= 2
+        }
+
+        hydrationIntervalMinutes = min(max(interval, 8), 35)
+        let caloriesPerHour = estimateCaloriesPerHour(speedKmh: max(speed, 8))
+        hydrationReminderText = "\(hydrationIntervalMinutes)分ごとに給水 / 約\(caloriesPerHour)kcal/h"
+    }
+
+    private func checkHydrationReminder() {
+        guard !hasShownArrivalMessage else { return }
+        guard locationService.currentSpeedKmh >= 4 else { return }
+
+        let elapsed = Date().timeIntervalSince(lastHydrationReminderAt)
+        guard elapsed >= TimeInterval(hydrationIntervalMinutes * 60) else { return }
+        lastHydrationReminderAt = Date()
+
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showHydrationReminder = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showHydrationReminder = false
+            }
+        }
+    }
+
+    private func estimateCaloriesPerHour(speedKmh: Double) -> Int {
+        let met: Double
+        switch speedKmh {
+        case ..<16:
+            met = 6.8
+        case ..<20:
+            met = 8.0
+        case ..<24:
+            met = 10.0
+        default:
+            met = 12.0
+        }
+        let weightKg = 70.0
+        return Int((met * 3.5 * weightKg) / 200 * 60)
+    }
+
     private func rainAvoidanceBanner(alert: RainAvoidanceAlert) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "cloud.rain")
@@ -428,6 +526,30 @@ private struct ArrivalCelebrationBanner: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.green.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+    }
+}
+
+private struct HydrationReminderBanner: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "drop.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.cyan)
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.citrusPrimaryText)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.cyan.opacity(0.35), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
     }

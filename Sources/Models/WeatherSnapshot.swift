@@ -10,6 +10,7 @@ struct WeatherSnapshot: Identifiable {
     let id = UUID()
     let timestamp: Date
     let condition: String
+    let temperatureCelsius: Double
     let windSpeed: Double
     let windDirection: Double
     let roadRisk: Double
@@ -25,6 +26,7 @@ struct WeatherSnapshot: Identifiable {
     static let sample = WeatherSnapshot(
         timestamp: Date(),
         condition: "晴れ",
+        temperatureCelsius: 24.0,
         windSpeed: 9.2,
         windDirection: 45,
         roadRisk: 0.6,

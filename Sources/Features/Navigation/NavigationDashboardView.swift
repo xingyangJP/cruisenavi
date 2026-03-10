@@ -227,6 +227,7 @@ struct NavigationDashboardView: View {
                     destination: destination,
                     routeSummary: route,
                     rainAvoidanceAlert: viewModel.rainAvoidanceAlert,
+                    weatherSnapshot: viewModel.weatherSnapshot,
                     onExit: {
                         viewModel.endNavigation()
                         showDrivingMode = false
@@ -323,7 +324,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.88"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.89"
         return "ver\(version)"
     }
 
