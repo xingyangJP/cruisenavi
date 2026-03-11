@@ -222,6 +222,7 @@ private struct LogbookDetailSheet: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(log.startTime.formatted(date: .complete, time: .shortened))
                         .font(.headline)
+                        .foregroundStyle(Color.citrusPrimaryText)
 
                     HStack(spacing: 16) {
                         miniStat(title: "距離", value: String(format: "%.1f km", log.distance))
@@ -236,7 +237,7 @@ private struct LogbookDetailSheet: View {
                     if let status = healthStatus {
                         Text("Health: \(status.text)")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.citrusSecondaryText)
                     }
 
                     rideStoryCard(rideStory)
@@ -251,7 +252,7 @@ private struct LogbookDetailSheet: View {
                     } else {
                         Text("ルート詳細データがありません")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.citrusSecondaryText)
                     }
                 }
                 .padding()
@@ -265,9 +266,10 @@ private struct LogbookDetailSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.citrusSecondaryText)
             Text(value)
                 .font(.headline)
+                .foregroundStyle(Color.citrusPrimaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)

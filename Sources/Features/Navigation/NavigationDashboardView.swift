@@ -396,6 +396,7 @@ private struct HomeFavoritesCard: View {
                                         Text(harbor.name)
                                             .font(.subheadline.weight(.semibold))
                                             .lineLimit(1)
+                                            .foregroundStyle(Color.citrusPrimaryText)
                                         Text(String(format: "%.1f km", harbor.distance))
                                             .font(.caption)
                                             .foregroundStyle(Color.citrusSecondaryText)

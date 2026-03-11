@@ -419,3 +419,7 @@
 - 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` を実施し `BUILD SUCCEEDED` を確認
 - 実機確認/テストスイート実行は未実施（本対応は進捗監査のみ）。必要に応じて手動シナリオ（危険アラート3種、ライドストーリー共有）と `xcodebuild ... test` を別途実施
 - テスト確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test` を実行し、`RideLaneSmokeTests` 7件 PASS（`TEST SUCCEEDED`）を確認
+- ダークモード可読性調査: お気に入り/履歴詳細で `Color.primary`・既定色が白化し、白系カード上で読みにくくなる原因を特定
+- 修正: `DestinationSearchView` の行テキスト、`NavigationDashboardView` の Homeお気に入りカード名、`LogbookListView` の詳細シート統計値/補助文言を `citrusPrimaryText` / `citrusSecondaryText` に統一
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` で `BUILD SUCCEEDED`
+- 実機確認は未実施（依頼が調査中心のため）。必要時は iOS のライト/ダーク切替でお気に入り一覧・履歴詳細シートを目視確認
