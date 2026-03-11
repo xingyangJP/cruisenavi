@@ -158,6 +158,13 @@ struct LogbookListView: View {
 }
 
 private struct LogbookDetailSheet: View {
+    struct RideStory {
+        let title: String
+        let subtitle: String
+        let highlights: [String]
+        let shareText: String
+    }
+
     let log: VoyageLog
     let healthStatus: NavigationDashboardViewModel.RideLogHealthStatus?
 
@@ -179,6 +186,34 @@ private struct LogbookDetailSheet: View {
             longitudeDelta: max((maxLon - minLon) * 1.4, 0.01)
         )
         return MKCoordinateRegion(center: center, span: span)
+    }
+
+    private var rideStory: RideStory {
+        let rideType: String = {
+            switch log.distance {
+            case ..<10:
+                return "ショート"
+            case ..<30:
+                return "ミドル"
+            default:
+                return "ロング"
+            }
+        }()
+
+        let title = "今日のライドストーリー"
+        let subtitle = "\(rideType)ライド \(String(format: "%.1fkm", log.distance))・平均\(String(format: "%.1fkm/h", log.averageSpeed))"
+        let highlights = [
+            "走行時間 \(durationString(log.duration))",
+            "天候 \(log.weatherSummary)",
+            "ルート点 \(log.routePoints.count)"
+        ]
+        let shareText = [
+            "RideLane ライドストーリー",
+            log.startTime.formatted(date: .abbreviated, time: .shortened),
+            subtitle,
+            "天候: \(log.weatherSummary)"
+        ].joined(separator: "\n")
+        return RideStory(title: title, subtitle: subtitle, highlights: highlights, shareText: shareText)
     }
 
     var body: some View {
@@ -203,6 +238,8 @@ private struct LogbookDetailSheet: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
+
+                    rideStoryCard(rideStory)
 
                     if log.routePoints.count > 1 {
                         Map(initialPosition: .region(mapRegion)) {
@@ -249,6 +286,53 @@ private struct LogbookDetailSheet: View {
             return "\(hours)時間\(minutes)分"
         }
         return "\(minutes)分"
+    }
+
+    @ViewBuilder
+    private func rideStoryCard(_ story: RideStory) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("ライドストーリー", systemImage: "sparkles")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.95))
+                Spacer()
+                ShareLink(item: story.shareText) {
+                    Label("共有", systemImage: "square.and.arrow.up")
+                        .font(.caption.bold())
+                        .foregroundStyle(Color(red: 0.09, green: 0.3, blue: 0.47))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.85), in: Capsule())
+                }
+            }
+
+            Text(story.title)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+            Text(story.subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.92))
+
+            ForEach(story.highlights, id: \.self) { highlight in
+                Text("• \(highlight)")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.18, green: 0.5, blue: 0.88),
+                    Color(red: 0.12, green: 0.34, blue: 0.72)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 16)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
     }
 }
 

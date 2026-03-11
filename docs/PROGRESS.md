@@ -403,3 +403,19 @@
 - 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.89` へ同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.88` から `1.0.89` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.89` へ同期
 - ビルド確認: `xcodebuild -project /Users/xingyang/cruisenavi/SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` が `BUILD SUCCEEDED`
+- 危険地点アラート（MVP）をナビ画面に実装: ルート形状先読みで急カーブ、夜間高速走行、気象警戒下の路面悪化を検知して上部バナー表示
+- 危険通知の連続発火を抑止するため、18秒クールダウンと同一アラート45秒抑止を追加
+- 危険アラート表示時に警告ハプティクスを発火し、4.5秒後に自動非表示化
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.90` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.89` から `1.0.90` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.90` へ同期
+- ライド詳細に「ライドストーリー自動生成（MVP）」を実装: `VoyageLog` から距離/平均速度/天候/時間をカード化し、`ShareLink` で共有可能に変更
+- `LogbookDetailSheet` にストーリーカードUI（グラデーション背景・ハイライト表示）を追加
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.91` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.90` から `1.0.91` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.91` へ同期
+
+## 2026-03-11
+- 進捗確認対応として、最新コミット（`6791aee`, v1.0.89）以降の未コミット差分を調査し、v1.0.90（危険地点アラートMVP）とv1.0.91（ライドストーリー自動生成MVP）の実装・ドキュメント更新がワーキングツリーに存在することを確認
+- 変更対象は `DrivingNavigationView`（危険アラート検知/表示）、`LogbookListView`（ライドストーリーカード + ShareLink）、`NavigationDashboardView`（ver表示）、`project.pbxproj`（`MARKETING_VERSION=1.0.91`）、および README 群/`docs/PROGRESS.md`
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` を実施し `BUILD SUCCEEDED` を確認
+- 実機確認/テストスイート実行は未実施（本対応は進捗監査のみ）。必要に応じて手動シナリオ（危険アラート3種、ライドストーリー共有）と `xcodebuild ... test` を別途実施
+- テスト確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test` を実行し、`RideLaneSmokeTests` 7件 PASS（`TEST SUCCEEDED`）を確認

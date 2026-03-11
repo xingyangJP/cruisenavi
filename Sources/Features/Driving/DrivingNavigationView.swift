@@ -8,6 +8,19 @@ struct RouteProgressUpdate {
     let remainingDistanceKm: Double
 }
 
+struct RouteHazardAlert: Equatable {
+    enum Kind: String {
+        case sharpTurn = "急カーブ"
+        case wetRoad = "路面悪化"
+        case nightVisibility = "夜間視認性"
+    }
+
+    let kind: Kind
+    let title: String
+    let message: String
+    let signature: String
+}
+
 enum RouteProgressEstimator {
     static func remainingProgress(
         currentCoordinate: CLLocationCoordinate2D,
@@ -65,6 +78,99 @@ enum RouteProgressEstimator {
     }
 }
 
+enum RouteHazardEvaluator {
+    static func detect(
+        currentLocation: CLLocation,
+        remainingRoute: [CLLocationCoordinate2D],
+        weather: WeatherSnapshot,
+        speedKmh: Double,
+        now: Date = Date()
+    ) -> RouteHazardAlert? {
+        if let sharpTurnAlert = detectSharpTurnAhead(currentLocation: currentLocation, remainingRoute: remainingRoute) {
+            return sharpTurnAlert
+        }
+
+        if speedKmh >= 14, (weather.warning == .warning || weather.roadRisk >= 1.2) {
+            return RouteHazardAlert(
+                kind: .wetRoad,
+                title: "路面悪化注意",
+                message: "雨/強風の影響あり。速度を落として走行してください",
+                signature: "wetRoad-\(weather.warning.rawValue)"
+            )
+        }
+
+        if speedKmh >= 18, isNightTime(now: now) {
+            return RouteHazardAlert(
+                kind: .nightVisibility,
+                title: "夜間注意",
+                message: "視認性が低い時間帯です。ライト点灯で減速走行してください",
+                signature: "nightVisibility"
+            )
+        }
+        return nil
+    }
+
+    private static func detectSharpTurnAhead(
+        currentLocation: CLLocation,
+        remainingRoute: [CLLocationCoordinate2D]
+    ) -> RouteHazardAlert? {
+        guard remainingRoute.count >= 4 else { return nil }
+
+        let nearest = RouteProgressEstimator.nearestRouteIndex(to: currentLocation.coordinate, in: remainingRoute)
+        guard nearest >= 0 else { return nil }
+
+        let maxLookAheadDistance: CLLocationDistance = 160
+        var traversedDistance: CLLocationDistance = 0
+        var currentIndex = nearest
+
+        while currentIndex + 2 < remainingRoute.count && traversedDistance <= maxLookAheadDistance {
+            let a = remainingRoute[currentIndex]
+            let b = remainingRoute[currentIndex + 1]
+            let c = remainingRoute[currentIndex + 2]
+            let segmentDistance = a.distance(to: b)
+            traversedDistance += segmentDistance
+
+            let firstBearing = bearing(from: a, to: b)
+            let secondBearing = bearing(from: b, to: c)
+            let delta = angularDelta(firstBearing, secondBearing)
+
+            if delta >= 65, traversedDistance <= 140 {
+                let meters = max(Int(traversedDistance.rounded()), 20)
+                return RouteHazardAlert(
+                    kind: .sharpTurn,
+                    title: "前方急カーブ注意",
+                    message: "約\(meters)m先で進行方向が大きく変わります。減速してください",
+                    signature: "sharpTurn-\(currentIndex)"
+                )
+            }
+
+            currentIndex += 1
+        }
+        return nil
+    }
+
+    private static func isNightTime(now: Date) -> Bool {
+        let hour = Calendar.current.component(.hour, from: now)
+        return hour >= 19 || hour <= 5
+    }
+
+    private static func bearing(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> Double {
+        let lat1 = start.latitude * .pi / 180
+        let lon1 = start.longitude * .pi / 180
+        let lat2 = end.latitude * .pi / 180
+        let lon2 = end.longitude * .pi / 180
+        let y = sin(lon2 - lon1) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(lon2 - lon1)
+        let angle = atan2(y, x) * 180 / .pi
+        return fmod(angle + 360, 360)
+    }
+
+    private static func angularDelta(_ first: Double, _ second: Double) -> Double {
+        let raw = abs(first - second)
+        return min(raw, 360 - raw)
+    }
+}
+
 struct DrivingNavigationView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
@@ -90,6 +196,10 @@ struct DrivingNavigationView: View {
     @State private var hydrationIntervalMinutes = 20
     @State private var lastHydrationReminderAt = Date()
     @State private var hydrationTimer: AnyCancellable?
+    @State private var activeHazardAlert: RouteHazardAlert?
+    @State private var showHazardAlert = false
+    @State private var lastHazardAlertAt = Date.distantPast
+    @State private var lastHazardSignature: String?
 
     init(
         destination: Harbor,
@@ -148,6 +258,7 @@ struct DrivingNavigationView: View {
                     evaluateArrival()
                     if !hasShownArrivalMessage {
                         onRerouteRequest(newLocation, remainingRouteCoordinates)
+                        evaluateHazardAlert(with: newLocation)
                     }
                 }
                 focusCameraOnUser(animated: true)
@@ -186,6 +297,13 @@ struct DrivingNavigationView: View {
                     rainAvoidanceBanner(alert: rainAvoidanceAlert)
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
+                }
+
+                if showHazardAlert, let activeHazardAlert {
+                    HazardAlertBanner(alert: activeHazardAlert)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 if showHydrationReminder {
@@ -361,6 +479,47 @@ struct DrivingNavigationView: View {
             .sink { _ in
                 checkHydrationReminder()
             }
+    }
+
+    private func evaluateHazardAlert(with location: CLLocation) {
+        guard !hasShownArrivalMessage else { return }
+        guard !remainingRouteCoordinates.isEmpty else { return }
+
+        guard let hazard = RouteHazardEvaluator.detect(
+            currentLocation: location,
+            remainingRoute: remainingRouteCoordinates,
+            weather: weatherSnapshot,
+            speedKmh: locationService.currentSpeedKmh
+        ) else {
+            return
+        }
+
+        let now = Date()
+        let minInterval: TimeInterval = 18
+        if now.timeIntervalSince(lastHazardAlertAt) < minInterval {
+            return
+        }
+        if lastHazardSignature == hazard.signature,
+           now.timeIntervalSince(lastHazardAlertAt) < 45 {
+            return
+        }
+
+        lastHazardAlertAt = now
+        lastHazardSignature = hazard.signature
+        activeHazardAlert = hazard
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showHazardAlert = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showHazardAlert = false
+            }
+        }
+#if DEBUG
+        print("Hazard alert: \(hazard.kind.rawValue) / \(hazard.message)")
+#endif
     }
 
     private func refreshHydrationPlan() {
@@ -550,6 +709,36 @@ private struct HydrationReminderBanner: View {
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+    }
+}
+
+private struct HazardAlertBanner: View {
+    let alert: RouteHazardAlert
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(alert.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.citrusPrimaryText)
+                Text(alert.message)
+                    .font(.caption)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.orange.opacity(0.4), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
     }
