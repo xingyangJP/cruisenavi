@@ -388,3 +388,41 @@
 - 帰属リンクはタップ可能（外部ブラウザ遷移）とし、視認性確保のためカード下部に固定配置
 - 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.87` に同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.86` から `1.0.87` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.87` へ同期
+- Homeに「休憩スポット提案」カードを追加。走行距離（当日累計）と気象警戒レベルに応じて、休憩推奨タイミング（例: あとx.xkm）を表示
+- 提案スポットは近場候補から休憩向きキーワード（休憩/給水/自販機/ベンチ/カフェ/コンビニ）を優先して1件提示し、ボタンで即ナビ開始可能
+- `NavigationDashboardViewModel` に `RestSpotSuggestion` 計算ロジックを追加し、位置更新と再計算タイミングでリアルタイム更新
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.88` に同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.87` から `1.0.88` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.88` へ同期
+- 休憩所レコメンド仕様を `docs/REST_SPOT_RECOMMENDATION_SPEC.md` として文書化（お気に入りとの分離、表示条件、件数、距離帯ロジック、気象補正、UI、テスト観点）
+- `docs/README.md` に上記仕様書の索引を追加
+- 本対応はドキュメント更新のみ（コード変更なし）のため、`MARKETING_VERSION` 更新は対象外
+- ナビ中の補給リマインド機能を実装: `WeatherSnapshot` に気温（`temperatureCelsius`）を追加し、WeatherKit/OpenWeather取得値を連携
+- `DrivingNavigationView` に補給リマインドロジックを追加（30秒周期判定、速度4km/h以上時のみ表示、気温/速度/警戒レベルで8〜35分の給水間隔を動的算出）
+- 補給リマインドの表示文言を `xx分ごとに給水 / 約xxxkcal/h` に統一し、4秒で自動非表示・警告ハプティクス発火を追加
+- `NavigationDashboardView` からナビ画面へ `weatherSnapshot` を渡す接続を追加
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.89` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.88` から `1.0.89` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.89` へ同期
+- ビルド確認: `xcodebuild -project /Users/xingyang/cruisenavi/SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` が `BUILD SUCCEEDED`
+- 危険地点アラート（MVP）をナビ画面に実装: ルート形状先読みで急カーブ、夜間高速走行、気象警戒下の路面悪化を検知して上部バナー表示
+- 危険通知の連続発火を抑止するため、18秒クールダウンと同一アラート45秒抑止を追加
+- 危険アラート表示時に警告ハプティクスを発火し、4.5秒後に自動非表示化
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.90` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.89` から `1.0.90` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.90` へ同期
+- ライド詳細に「ライドストーリー自動生成（MVP）」を実装: `VoyageLog` から距離/平均速度/天候/時間をカード化し、`ShareLink` で共有可能に変更
+- `LogbookDetailSheet` にストーリーカードUI（グラデーション背景・ハイライト表示）を追加
+- 関連ドキュメント `README.md` / `README_UI.md` / `README_TECH_SPEC.md` / `README_TEST.md` を `1.0.91` へ同期
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.90` から `1.0.91` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.91` へ同期
+
+## 2026-03-11
+- 進捗確認対応として、最新コミット（`6791aee`, v1.0.89）以降の未コミット差分を調査し、v1.0.90（危険地点アラートMVP）とv1.0.91（ライドストーリー自動生成MVP）の実装・ドキュメント更新がワーキングツリーに存在することを確認
+- 変更対象は `DrivingNavigationView`（危険アラート検知/表示）、`LogbookListView`（ライドストーリーカード + ShareLink）、`NavigationDashboardView`（ver表示）、`project.pbxproj`（`MARKETING_VERSION=1.0.91`）、および README 群/`docs/PROGRESS.md`
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` を実施し `BUILD SUCCEEDED` を確認
+- 実機確認/テストスイート実行は未実施（本対応は進捗監査のみ）。必要に応じて手動シナリオ（危険アラート3種、ライドストーリー共有）と `xcodebuild ... test` を別途実施
+- テスト確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test` を実行し、`RideLaneSmokeTests` 7件 PASS（`TEST SUCCEEDED`）を確認
+- ダークモード可読性調査: お気に入り/履歴詳細で `Color.primary`・既定色が白化し、白系カード上で読みにくくなる原因を特定
+- 修正: `DestinationSearchView` の行テキスト、`NavigationDashboardView` の Homeお気に入りカード名、`LogbookListView` の詳細シート統計値/補助文言を `citrusPrimaryText` / `citrusSecondaryText` に統一
+- 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` で `BUILD SUCCEEDED`
+- 実機確認は未実施（依頼が調査中心のため）。必要時は iOS のライト/ダーク切替でお気に入り一覧・履歴詳細シートを目視確認
+- 音声ナビMVPを追加: `DrivingNavigationView` に `AVSpeechSynthesizer` ベースの音声ガイドを実装し、開始時・次操作約300m前/80m前・危険アラート時・到着時に日本語音声を再生するよう変更
+- 文言整形/発話タイミングの回帰防止として `RideLaneSmokeTests` に音声案内用テストを追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.91` から `1.0.92` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.92` へ同期

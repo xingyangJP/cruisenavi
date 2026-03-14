@@ -134,4 +134,36 @@ final class RideLaneSmokeTests: XCTestCase {
         XCTAssertGreaterThan(distance, 90)
         XCTAssertLessThan(distance, 130)
     }
+
+    func testRouteVoiceFormatterMakesConciseRightTurnPrompt() {
+        let concise = RouteVoiceFormatter.conciseManeuver(from: "300 m先で右折して県道277号に入る")
+        let prompt = RouteVoiceFormatter.turnPrompt(
+            primaryInstruction: "300 m先で右折して県道277号に入る",
+            remainingMeters: 72
+        )
+
+        XCTAssertEqual(concise, "右です")
+        XCTAssertEqual(prompt, "まもなく右です")
+    }
+
+    func testRouteVoiceCuePlannerTriggers300mThen80m() {
+        let totalDistanceKm = 5.0
+        let nextDistanceKm = 0.9
+
+        let firstCue = RouteVoiceCuePlanner.nextCueMilestone(
+            totalDistanceKm: totalDistanceKm,
+            remainingDistanceKm: 4.35,
+            nextDistanceKm: nextDistanceKm,
+            spokenMilestones: []
+        )
+        XCTAssertEqual(firstCue, 300)
+
+        let secondCue = RouteVoiceCuePlanner.nextCueMilestone(
+            totalDistanceKm: totalDistanceKm,
+            remainingDistanceKm: 4.15,
+            nextDistanceKm: nextDistanceKm,
+            spokenMilestones: [300]
+        )
+        XCTAssertEqual(secondCue, 80)
+    }
 }

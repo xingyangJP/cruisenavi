@@ -42,6 +42,7 @@ final class AppleWeatherKitService: WeatherService {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         let weather = try await WeatherKit.WeatherService.shared.weather(for: location)
         let current = weather.currentWeather
+        let temperature = current.temperature.converted(to: .celsius).value
         let windSpeed = current.wind.speed.converted(to: .metersPerSecond).value
         let windDirection = current.wind.direction.converted(to: .degrees).value
         let condition = weatherConditionText(current.condition)
@@ -63,6 +64,7 @@ final class AppleWeatherKitService: WeatherService {
         return WeatherSnapshot(
             timestamp: current.date,
             condition: condition,
+            temperatureCelsius: temperature,
             windSpeed: windSpeed,
             windDirection: windDirection,
             roadRisk: roadRisk,
@@ -168,6 +170,7 @@ final class WeatherAPIClient: WeatherService {
             return WeatherSnapshot(
                 timestamp: Date(timeIntervalSince1970: current.timestamp),
                 condition: current.condition ?? "不明",
+                temperatureCelsius: current.temperatureCelsius,
                 windSpeed: current.windSpeed,
                 windDirection: current.windDirection,
                 roadRisk: current.waveHeight ?? 0.6,
@@ -219,6 +222,7 @@ final class WeatherAPIClient: WeatherService {
             return WeatherSnapshot(
                 timestamp: Date(timeIntervalSince1970: current.timestamp),
                 condition: payload.localizedCondition,
+                temperatureCelsius: payload.temperatureCelsius,
                 windSpeed: current.windSpeed,
                 windDirection: current.windDirection,
                 roadRisk: payload.roadRisk,
@@ -250,6 +254,7 @@ private extension WeatherAPIClient {
         }
         struct Entry: Decodable {
             let dt: TimeInterval
+            let temp: Double?
             let wind_speed: Double
             let wind_deg: Double
             let waves: Waves?
@@ -261,6 +266,7 @@ private extension WeatherAPIClient {
             }
 
             var timestamp: TimeInterval { dt }
+            var temperatureCelsius: Double { (temp ?? 293.15) - 273.15 }
             var windSpeed: Double { wind_speed }
             var windDirection: Double { wind_deg }
             var waveHeight: Double? { waves?.wave_height }
@@ -288,7 +294,12 @@ private extension WeatherAPIClient {
             let windDirection: Double
         }
 
+        struct Main: Decodable {
+            let temp: Double
+        }
+
         let dt: TimeInterval
+        let main: Main
         let weather: [Weather]
         let wind: Wind
 
@@ -298,6 +309,10 @@ private extension WeatherAPIClient {
                 windSpeed: wind.speed,
                 windDirection: wind.deg ?? 0
             )
+        }
+
+        var temperatureCelsius: Double {
+            main.temp - 273.15
         }
 
         var condition: String {

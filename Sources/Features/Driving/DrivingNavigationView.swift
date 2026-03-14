@@ -1,10 +1,160 @@
 import SwiftUI
 import MapKit
 import UIKit
+import Combine
+import AVFoundation
 
 struct RouteProgressUpdate {
     let remainingRoute: [CLLocationCoordinate2D]
     let remainingDistanceKm: Double
+}
+
+struct RouteHazardAlert: Equatable {
+    enum Kind: String {
+        case sharpTurn = "急カーブ"
+        case wetRoad = "路面悪化"
+        case nightVisibility = "夜間視認性"
+    }
+
+    let kind: Kind
+    let title: String
+    let message: String
+    let signature: String
+}
+
+enum RouteVoiceFormatter {
+    static func conciseManeuver(from instruction: String) -> String {
+        let normalized = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty {
+            return "そのまま進んでください"
+        }
+
+        if containsAny(["右折", "右へ", "斜め右", "右方向"], in: normalized) {
+            return "右です"
+        }
+        if containsAny(["左折", "左へ", "斜め左", "左方向"], in: normalized) {
+            return "左です"
+        }
+        if containsAny(["直進", "まっすぐ"], in: normalized) {
+            return "そのまま直進です"
+        }
+        if containsAny(["uターン", "Uターン", "転回"], in: normalized) {
+            return "Uターンです"
+        }
+
+        return normalized
+            .replacingOccurrences(of: "、", with: " ")
+            .replacingOccurrences(of: "  ", with: " ")
+    }
+
+    static func startPrompt(primaryInstruction: String, secondaryInstruction: String) -> String {
+        let maneuver = conciseManeuver(from: primaryInstruction)
+        let detail = secondaryInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        if detail.isEmpty {
+            return "音声ナビを開始します。\(maneuver)"
+        }
+        return "音声ナビを開始します。\(maneuver)。\(detail)方面です"
+    }
+
+    static func reroutePrompt(primaryInstruction: String) -> String {
+        "ルートを更新しました。\(conciseManeuver(from: primaryInstruction))"
+    }
+
+    static func turnPrompt(primaryInstruction: String, remainingMeters: Int) -> String {
+        let maneuver = conciseManeuver(from: primaryInstruction)
+        if remainingMeters <= 90 {
+            return "まもなく\(maneuver)"
+        }
+        let roundedMeters = max((remainingMeters / 10) * 10, 20)
+        return "\(roundedMeters)メートル先、\(maneuver)"
+    }
+
+    static func hazardPrompt(_ alert: RouteHazardAlert) -> String {
+        switch alert.kind {
+        case .sharpTurn:
+            return "危険です。前方急カーブです。減速してください"
+        case .wetRoad:
+            return "危険です。路面悪化に注意してください"
+        case .nightVisibility:
+            return "危険です。夜間走行です。ライトを確認してください"
+        }
+    }
+
+    private static func containsAny(_ keywords: [String], in text: String) -> Bool {
+        let lowercased = text.lowercased()
+        return keywords.contains { lowercased.contains($0.lowercased()) }
+    }
+}
+
+enum RouteVoiceCuePlanner {
+    static func remainingToNextTurnMeters(
+        totalDistanceKm: Double,
+        remainingDistanceKm: Double,
+        nextDistanceKm: Double
+    ) -> Int {
+        let traveledKm = max(totalDistanceKm - remainingDistanceKm, 0)
+        let remainingKm = max(nextDistanceKm - traveledKm, 0)
+        return Int((remainingKm * 1000).rounded())
+    }
+
+    static func nextCueMilestone(
+        totalDistanceKm: Double,
+        remainingDistanceKm: Double,
+        nextDistanceKm: Double,
+        spokenMilestones: Set<Int>
+    ) -> Int? {
+        let remainingMeters = remainingToNextTurnMeters(
+            totalDistanceKm: totalDistanceKm,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: nextDistanceKm
+        )
+
+        guard remainingMeters > 10 else { return nil }
+        if remainingMeters <= 80, !spokenMilestones.contains(80) {
+            return 80
+        }
+        if remainingMeters <= 300, !spokenMilestones.contains(300) {
+            return 300
+        }
+        return nil
+    }
+}
+
+@MainActor
+final class VoiceGuidanceController: NSObject, ObservableObject {
+    enum Priority {
+        case normal
+        case high
+    }
+
+    private let synthesizer = AVSpeechSynthesizer()
+    private var lastSpokenText: String?
+    private var lastSpokenAt = Date.distantPast
+
+    func speak(_ text: String, priority: Priority = .normal) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if lastSpokenText == trimmed, Date().timeIntervalSince(lastSpokenAt) < 4 {
+            return
+        }
+
+        if priority == .high {
+            synthesizer.stopSpeaking(at: .immediate)
+        } else if synthesizer.isSpeaking {
+            return
+        }
+
+        let utterance = AVSpeechUtterance(string: trimmed)
+        utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+        utterance.rate = 0.5
+        utterance.pitchMultiplier = 1.0
+        utterance.preUtteranceDelay = 0.05
+
+        lastSpokenText = trimmed
+        lastSpokenAt = Date()
+        synthesizer.speak(utterance)
+    }
 }
 
 enum RouteProgressEstimator {
@@ -64,10 +214,104 @@ enum RouteProgressEstimator {
     }
 }
 
+enum RouteHazardEvaluator {
+    static func detect(
+        currentLocation: CLLocation,
+        remainingRoute: [CLLocationCoordinate2D],
+        weather: WeatherSnapshot,
+        speedKmh: Double,
+        now: Date = Date()
+    ) -> RouteHazardAlert? {
+        if let sharpTurnAlert = detectSharpTurnAhead(currentLocation: currentLocation, remainingRoute: remainingRoute) {
+            return sharpTurnAlert
+        }
+
+        if speedKmh >= 14, (weather.warning == .warning || weather.roadRisk >= 1.2) {
+            return RouteHazardAlert(
+                kind: .wetRoad,
+                title: "路面悪化注意",
+                message: "雨/強風の影響あり。速度を落として走行してください",
+                signature: "wetRoad-\(weather.warning.rawValue)"
+            )
+        }
+
+        if speedKmh >= 18, isNightTime(now: now) {
+            return RouteHazardAlert(
+                kind: .nightVisibility,
+                title: "夜間注意",
+                message: "視認性が低い時間帯です。ライト点灯で減速走行してください",
+                signature: "nightVisibility"
+            )
+        }
+        return nil
+    }
+
+    private static func detectSharpTurnAhead(
+        currentLocation: CLLocation,
+        remainingRoute: [CLLocationCoordinate2D]
+    ) -> RouteHazardAlert? {
+        guard remainingRoute.count >= 4 else { return nil }
+
+        let nearest = RouteProgressEstimator.nearestRouteIndex(to: currentLocation.coordinate, in: remainingRoute)
+        guard nearest >= 0 else { return nil }
+
+        let maxLookAheadDistance: CLLocationDistance = 160
+        var traversedDistance: CLLocationDistance = 0
+        var currentIndex = nearest
+
+        while currentIndex + 2 < remainingRoute.count && traversedDistance <= maxLookAheadDistance {
+            let a = remainingRoute[currentIndex]
+            let b = remainingRoute[currentIndex + 1]
+            let c = remainingRoute[currentIndex + 2]
+            let segmentDistance = a.distance(to: b)
+            traversedDistance += segmentDistance
+
+            let firstBearing = bearing(from: a, to: b)
+            let secondBearing = bearing(from: b, to: c)
+            let delta = angularDelta(firstBearing, secondBearing)
+
+            if delta >= 65, traversedDistance <= 140 {
+                let meters = max(Int(traversedDistance.rounded()), 20)
+                return RouteHazardAlert(
+                    kind: .sharpTurn,
+                    title: "前方急カーブ注意",
+                    message: "約\(meters)m先で進行方向が大きく変わります。減速してください",
+                    signature: "sharpTurn-\(currentIndex)"
+                )
+            }
+
+            currentIndex += 1
+        }
+        return nil
+    }
+
+    private static func isNightTime(now: Date) -> Bool {
+        let hour = Calendar.current.component(.hour, from: now)
+        return hour >= 19 || hour <= 5
+    }
+
+    private static func bearing(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> Double {
+        let lat1 = start.latitude * .pi / 180
+        let lon1 = start.longitude * .pi / 180
+        let lat2 = end.latitude * .pi / 180
+        let lon2 = end.longitude * .pi / 180
+        let y = sin(lon2 - lon1) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(lon2 - lon1)
+        let angle = atan2(y, x) * 180 / .pi
+        return fmod(angle + 360, 360)
+    }
+
+    private static func angularDelta(_ first: Double, _ second: Double) -> Double {
+        let raw = abs(first - second)
+        return min(raw, 360 - raw)
+    }
+}
+
 struct DrivingNavigationView: View {
     let destination: Harbor
     let routeSummary: RouteSummary
     let rainAvoidanceAlert: RainAvoidanceAlert?
+    let weatherSnapshot: WeatherSnapshot
     let onExit: () -> Void
     let onChangeDestination: () -> Void
     let onRerouteRequest: (CLLocation, [CLLocationCoordinate2D]) -> Void
@@ -83,11 +327,24 @@ struct DrivingNavigationView: View {
     @State private var showArrivalMessage = false
     @State private var arrivalMessage: String?
     @State private var hasTriggeredAutoExit = false
+    @State private var showHydrationReminder = false
+    @State private var hydrationReminderText = ""
+    @State private var hydrationIntervalMinutes = 20
+    @State private var lastHydrationReminderAt = Date()
+    @State private var hydrationTimer: AnyCancellable?
+    @State private var activeHazardAlert: RouteHazardAlert?
+    @State private var showHazardAlert = false
+    @State private var lastHazardAlertAt = Date.distantPast
+    @State private var lastHazardSignature: String?
+    @State private var spokenTurnMilestones = Set<Int>()
+    @State private var hasSpokenStartGuidance = false
+    @StateObject private var voiceGuidance = VoiceGuidanceController()
 
     init(
         destination: Harbor,
         routeSummary: RouteSummary,
         rainAvoidanceAlert: RainAvoidanceAlert?,
+        weatherSnapshot: WeatherSnapshot,
         onExit: @escaping () -> Void,
         onChangeDestination: @escaping () -> Void,
         onRerouteRequest: @escaping (CLLocation, [CLLocationCoordinate2D]) -> Void,
@@ -97,6 +354,7 @@ struct DrivingNavigationView: View {
         self.destination = destination
         self.routeSummary = routeSummary
         self.rainAvoidanceAlert = rainAvoidanceAlert
+        self.weatherSnapshot = weatherSnapshot
         self.onExit = onExit
         self.onChangeDestination = onChangeDestination
         self.onRerouteRequest = onRerouteRequest
@@ -122,12 +380,17 @@ struct DrivingNavigationView: View {
                 locationService.requestAuthorization()
                 locationService.startTracking()
                 setNavigationAwakeMode(enabled: true)
+                refreshHydrationPlan()
+                startHydrationTimer()
+                speakStartGuidanceIfNeeded()
                 // When navigation starts, zoom to the start point first.
                 focusCameraOnStart(animated: false)
                 focusCameraOnUser(animated: false)
             }
             .onDisappear {
                 setNavigationAwakeMode(enabled: false)
+                hydrationTimer?.cancel()
+                hydrationTimer = nil
             }
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
@@ -135,9 +398,14 @@ struct DrivingNavigationView: View {
                     evaluateArrival()
                     if !hasShownArrivalMessage {
                         onRerouteRequest(newLocation, remainingRouteCoordinates)
+                        evaluateTurnVoiceGuidance()
+                        evaluateHazardAlert(with: newLocation)
                     }
                 }
                 focusCameraOnUser(animated: true)
+            }
+            .onChange(of: locationService.currentSpeedKmh) { _, _ in
+                refreshHydrationPlan()
             }
             .onChange(of: remainingDistanceKm) { _, _ in
                 evaluateArrival()
@@ -147,9 +415,11 @@ struct DrivingNavigationView: View {
             }
             .onChange(of: routeSummary.totalDistance) { _, _ in
                 resetRemainingRoute()
+                resetVoiceGuidanceState()
             }
             .onChange(of: routeSummary.routeCoordinates?.count ?? 0) { _, _ in
                 resetRemainingRoute()
+                resetVoiceGuidanceState()
             }
 
             VStack(spacing: 0) {
@@ -170,6 +440,20 @@ struct DrivingNavigationView: View {
                     rainAvoidanceBanner(alert: rainAvoidanceAlert)
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
+                }
+
+                if showHazardAlert, let activeHazardAlert {
+                    HazardAlertBanner(alert: activeHazardAlert)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                if showHydrationReminder {
+                    HydrationReminderBanner(message: hydrationReminderText)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 Spacer()
@@ -197,6 +481,16 @@ struct DrivingNavigationView: View {
     private func resetRemainingRoute() {
         remainingRouteCoordinates = routeSummary.routeCoordinates ?? []
         remainingDistanceKm = routeSummary.totalDistance
+    }
+
+    private func resetVoiceGuidanceState() {
+        spokenTurnMilestones.removeAll()
+        hasSpokenStartGuidance = false
+        voiceGuidance.speak(
+            RouteVoiceFormatter.reroutePrompt(primaryInstruction: routeSummary.primaryInstruction),
+            priority: .high
+        )
+        hasSpokenStartGuidance = true
     }
 
     private func updateRemainingRoute(with location: CLLocation) {
@@ -229,6 +523,7 @@ struct DrivingNavigationView: View {
         withAnimation(.spring(duration: 0.4)) {
             showArrivalMessage = true
         }
+        voiceGuidance.speak(arrivalMessage ?? "目的地に到着しました", priority: .high)
         let feedback = UINotificationFeedbackGenerator()
         feedback.notificationOccurred(.success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
@@ -331,6 +626,161 @@ struct DrivingNavigationView: View {
         UIApplication.shared.isIdleTimerDisabled = enabled
     }
 
+    private func startHydrationTimer() {
+        hydrationTimer?.cancel()
+        hydrationTimer = Timer.publish(every: 30, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                checkHydrationReminder()
+            }
+    }
+
+    private func speakStartGuidanceIfNeeded() {
+        guard !hasSpokenStartGuidance else { return }
+        guard routeSummary.routeCoordinates?.isEmpty == false else { return }
+        voiceGuidance.speak(
+            RouteVoiceFormatter.startPrompt(
+                primaryInstruction: routeSummary.primaryInstruction,
+                secondaryInstruction: routeSummary.secondaryInstruction
+            )
+        )
+        hasSpokenStartGuidance = true
+    }
+
+    private func evaluateTurnVoiceGuidance() {
+        guard routeSummary.nextDistance > 0 else { return }
+
+        guard let milestone = RouteVoiceCuePlanner.nextCueMilestone(
+            totalDistanceKm: routeSummary.totalDistance,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: routeSummary.nextDistance,
+            spokenMilestones: spokenTurnMilestones
+        ) else {
+            return
+        }
+
+        let remainingMeters = RouteVoiceCuePlanner.remainingToNextTurnMeters(
+            totalDistanceKm: routeSummary.totalDistance,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: routeSummary.nextDistance
+        )
+        spokenTurnMilestones.insert(milestone)
+        voiceGuidance.speak(
+            RouteVoiceFormatter.turnPrompt(
+                primaryInstruction: routeSummary.primaryInstruction,
+                remainingMeters: remainingMeters
+            )
+        )
+    }
+
+    private func evaluateHazardAlert(with location: CLLocation) {
+        guard !hasShownArrivalMessage else { return }
+        guard !remainingRouteCoordinates.isEmpty else { return }
+
+        guard let hazard = RouteHazardEvaluator.detect(
+            currentLocation: location,
+            remainingRoute: remainingRouteCoordinates,
+            weather: weatherSnapshot,
+            speedKmh: locationService.currentSpeedKmh
+        ) else {
+            return
+        }
+
+        let now = Date()
+        let minInterval: TimeInterval = 18
+        if now.timeIntervalSince(lastHazardAlertAt) < minInterval {
+            return
+        }
+        if lastHazardSignature == hazard.signature,
+           now.timeIntervalSince(lastHazardAlertAt) < 45 {
+            return
+        }
+
+        lastHazardAlertAt = now
+        lastHazardSignature = hazard.signature
+        activeHazardAlert = hazard
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        voiceGuidance.speak(RouteVoiceFormatter.hazardPrompt(hazard), priority: .high)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showHazardAlert = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showHazardAlert = false
+            }
+        }
+#if DEBUG
+        print("Hazard alert: \(hazard.kind.rawValue) / \(hazard.message)")
+#endif
+    }
+
+    private func refreshHydrationPlan() {
+        var interval = 20
+        let temp = weatherSnapshot.temperatureCelsius
+        let speed = locationService.currentSpeedKmh
+
+        if temp >= 30 {
+            interval -= 6
+        } else if temp >= 25 {
+            interval -= 4
+        } else if temp <= 5 {
+            interval += 4
+        }
+
+        if speed >= 25 {
+            interval -= 4
+        } else if speed >= 18 {
+            interval -= 2
+        } else if speed < 10 {
+            interval += 2
+        }
+
+        if weatherSnapshot.warning == .warning {
+            interval -= 2
+        }
+
+        hydrationIntervalMinutes = min(max(interval, 8), 35)
+        let caloriesPerHour = estimateCaloriesPerHour(speedKmh: max(speed, 8))
+        hydrationReminderText = "\(hydrationIntervalMinutes)分ごとに給水 / 約\(caloriesPerHour)kcal/h"
+    }
+
+    private func checkHydrationReminder() {
+        guard !hasShownArrivalMessage else { return }
+        guard locationService.currentSpeedKmh >= 4 else { return }
+
+        let elapsed = Date().timeIntervalSince(lastHydrationReminderAt)
+        guard elapsed >= TimeInterval(hydrationIntervalMinutes * 60) else { return }
+        lastHydrationReminderAt = Date()
+
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            showHydrationReminder = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showHydrationReminder = false
+            }
+        }
+    }
+
+    private func estimateCaloriesPerHour(speedKmh: Double) -> Int {
+        let met: Double
+        switch speedKmh {
+        case ..<16:
+            met = 6.8
+        case ..<20:
+            met = 8.0
+        case ..<24:
+            met = 10.0
+        default:
+            met = 12.0
+        }
+        let weightKg = 70.0
+        return Int((met * 3.5 * weightKg) / 200 * 60)
+    }
+
     private func rainAvoidanceBanner(alert: RainAvoidanceAlert) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "cloud.rain")
@@ -428,6 +878,60 @@ private struct ArrivalCelebrationBanner: View {
         .overlay(
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.green.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+    }
+}
+
+private struct HydrationReminderBanner: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "drop.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.cyan)
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.citrusPrimaryText)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.cyan.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+    }
+}
+
+private struct HazardAlertBanner: View {
+    let alert: RouteHazardAlert
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(alert.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.citrusPrimaryText)
+                Text(alert.message)
+                    .font(.caption)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.citrusCard, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.orange.opacity(0.4), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
     }

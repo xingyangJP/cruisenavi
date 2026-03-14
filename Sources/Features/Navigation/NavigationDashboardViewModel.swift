@@ -71,6 +71,15 @@ struct RideCompletionReward: Identifiable, Equatable {
     let badges: [String]
 }
 
+struct RestSpotSuggestion: Identifiable {
+    let id = UUID()
+    let harbor: Harbor
+    let title: String
+    let subtitle: String
+    let remainingUntilBreakKm: Double
+    let shouldRestNow: Bool
+}
+
 @MainActor
 final class NavigationDashboardViewModel: ObservableObject {
     enum RideLogHealthStatus {
@@ -106,6 +115,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var todayRideSuggestion: TodayRideSuggestion?
     @Published var weeklyMission: WeeklyMissionProgress = .init(title: "今週40km", targetKm: 40, currentKm: 0)
     @Published var latestRideReward: RideCompletionReward?
+    @Published var restSpotSuggestion: RestSpotSuggestion?
     @Published var healthSyncEnabled: Bool
 
     let locationService: LocationService
@@ -384,6 +394,7 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     private func handleLocationUpdate(_ location: CLLocation) {
         maybeRefreshRoute(for: location.coordinate)
+        recalculateGrowthWidgets()
     }
 
     private func maybeRefreshRoute(for coordinate: CLLocationCoordinate2D) {
@@ -656,6 +667,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     private func recalculateGrowthWidgets() {
         weeklyMission = computeWeeklyMission()
         todayRideSuggestion = computeTodayRideSuggestion()
+        restSpotSuggestion = computeRestSpotSuggestion()
     }
 
     private func computeWeeklyMission() -> WeeklyMissionProgress {
@@ -698,6 +710,59 @@ final class NavigationDashboardViewModel: ObservableObject {
         )
     }
 
+    private func computeRestSpotSuggestion() -> RestSpotSuggestion? {
+        let thresholdKm: Double
+        switch weatherSnapshot.warning {
+        case .warning:
+            thresholdKm = 10
+        case .advisory:
+            thresholdKm = 12
+        case .none:
+            thresholdKm = 15
+        }
+
+        let riddenKm = todayAccumulatedDistanceKm()
+        guard riddenKm > 1.5 else { return nil }
+
+        let remainingKm = max(thresholdKm - riddenKm, 0)
+        let shouldRestNow = remainingKm <= 0
+        let maxCandidateDistanceKm = shouldRestNow ? 15.0 : 8.0
+        let restKeywords = ["休憩", "給水", "自販機", "ベンチ", "カフェ", "コンビニ"]
+
+        let candidates = harbors
+            .filter { $0.distance > 0.2 && $0.distance <= maxCandidateDistanceKm }
+            .sorted { lhs, rhs in
+                let lhsScore = restScore(for: lhs, keywords: restKeywords)
+                let rhsScore = restScore(for: rhs, keywords: restKeywords)
+                if lhsScore != rhsScore { return lhsScore > rhsScore }
+                return lhs.distance < rhs.distance
+            }
+
+        guard let spot = candidates.first else { return nil }
+
+        let title: String
+        if shouldRestNow {
+            title = "休憩スポット提案"
+        } else {
+            title = String(format: "あと%.1fkmで休憩推奨", remainingKm)
+        }
+
+        let subtitle = String(
+            format: "%@ ・ 約%.1fkm（%d分）",
+            spot.name,
+            spot.distance,
+            spot.etaMinutes
+        )
+
+        return RestSpotSuggestion(
+            harbor: spot,
+            title: title,
+            subtitle: subtitle,
+            remainingUntilBreakKm: remainingKm,
+            shouldRestNow: shouldRestNow
+        )
+    }
+
     private func suggestionScore(
         for harbor: Harbor,
         targetDistance: Double,
@@ -706,6 +771,38 @@ final class NavigationDashboardViewModel: ObservableObject {
         let distanceScore = abs(harbor.distance - targetDistance)
         let restrictionScore = Double(harbor.restrictions.count) * 0.6
         return distanceScore + restrictionScore + riskPenalty
+    }
+
+    private func currentRideDistanceKm() -> Double {
+        let startIndex = min(activeRideStartRouteIndex ?? 0, locationService.routePoints.count)
+        let captured = Array(locationService.routePoints.dropFirst(startIndex))
+        return routeDistance(captured) / 1000.0
+    }
+
+    private func todayAccumulatedDistanceKm() -> Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
+        let loggedTodayKm = voyageLogs
+            .filter { $0.startTime >= startOfDay && $0.startTime <= now }
+            .reduce(0) { $0 + $1.distance }
+        if activeRideStartTime != nil {
+            return loggedTodayKm + currentRideDistanceKm()
+        }
+        return loggedTodayKm
+    }
+
+    private func restScore(for harbor: Harbor, keywords: [String]) -> Int {
+        var score = 0
+        for keyword in keywords {
+            if harbor.name.contains(keyword) {
+                score += 2
+            }
+            if harbor.facilities.contains(where: { $0.contains(keyword) }) {
+                score += 3
+            }
+        }
+        return score
     }
 
     private func buildRideCompletionReward(

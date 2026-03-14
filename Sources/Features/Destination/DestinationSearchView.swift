@@ -102,19 +102,19 @@ private struct DestinationRow: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(harbor.name)
                             .font(.headline)
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(Color.citrusPrimaryText)
                         Text("カテゴリ: \(harbor.facilities.joined(separator: ", "))")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.citrusSecondaryText)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(String(format: "%.1f km", harbor.distance))
                             .font(.headline)
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(Color.citrusPrimaryText)
                         Text("ETA \(harbor.etaMinutes)分")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.citrusSecondaryText)
                     }
                 }
             }
