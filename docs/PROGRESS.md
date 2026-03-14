@@ -423,3 +423,6 @@
 - 修正: `DestinationSearchView` の行テキスト、`NavigationDashboardView` の Homeお気に入りカード名、`LogbookListView` の詳細シート統計値/補助文言を `citrusPrimaryText` / `citrusSecondaryText` に統一
 - 実行確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` で `BUILD SUCCEEDED`
 - 実機確認は未実施（依頼が調査中心のため）。必要時は iOS のライト/ダーク切替でお気に入り一覧・履歴詳細シートを目視確認
+- 音声ナビMVPを追加: `DrivingNavigationView` に `AVSpeechSynthesizer` ベースの音声ガイドを実装し、開始時・次操作約300m前/80m前・危険アラート時・到着時に日本語音声を再生するよう変更
+- 文言整形/発話タイミングの回帰防止として `RideLaneSmokeTests` に音声案内用テストを追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.91` から `1.0.92` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.92` へ同期

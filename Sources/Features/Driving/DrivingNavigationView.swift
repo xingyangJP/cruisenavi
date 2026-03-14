@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 import UIKit
 import Combine
+import AVFoundation
 
 struct RouteProgressUpdate {
     let remainingRoute: [CLLocationCoordinate2D]
@@ -19,6 +20,141 @@ struct RouteHazardAlert: Equatable {
     let title: String
     let message: String
     let signature: String
+}
+
+enum RouteVoiceFormatter {
+    static func conciseManeuver(from instruction: String) -> String {
+        let normalized = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty {
+            return "そのまま進んでください"
+        }
+
+        if containsAny(["右折", "右へ", "斜め右", "右方向"], in: normalized) {
+            return "右です"
+        }
+        if containsAny(["左折", "左へ", "斜め左", "左方向"], in: normalized) {
+            return "左です"
+        }
+        if containsAny(["直進", "まっすぐ"], in: normalized) {
+            return "そのまま直進です"
+        }
+        if containsAny(["uターン", "Uターン", "転回"], in: normalized) {
+            return "Uターンです"
+        }
+
+        return normalized
+            .replacingOccurrences(of: "、", with: " ")
+            .replacingOccurrences(of: "  ", with: " ")
+    }
+
+    static func startPrompt(primaryInstruction: String, secondaryInstruction: String) -> String {
+        let maneuver = conciseManeuver(from: primaryInstruction)
+        let detail = secondaryInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
+        if detail.isEmpty {
+            return "音声ナビを開始します。\(maneuver)"
+        }
+        return "音声ナビを開始します。\(maneuver)。\(detail)方面です"
+    }
+
+    static func reroutePrompt(primaryInstruction: String) -> String {
+        "ルートを更新しました。\(conciseManeuver(from: primaryInstruction))"
+    }
+
+    static func turnPrompt(primaryInstruction: String, remainingMeters: Int) -> String {
+        let maneuver = conciseManeuver(from: primaryInstruction)
+        if remainingMeters <= 90 {
+            return "まもなく\(maneuver)"
+        }
+        let roundedMeters = max((remainingMeters / 10) * 10, 20)
+        return "\(roundedMeters)メートル先、\(maneuver)"
+    }
+
+    static func hazardPrompt(_ alert: RouteHazardAlert) -> String {
+        switch alert.kind {
+        case .sharpTurn:
+            return "危険です。前方急カーブです。減速してください"
+        case .wetRoad:
+            return "危険です。路面悪化に注意してください"
+        case .nightVisibility:
+            return "危険です。夜間走行です。ライトを確認してください"
+        }
+    }
+
+    private static func containsAny(_ keywords: [String], in text: String) -> Bool {
+        let lowercased = text.lowercased()
+        return keywords.contains { lowercased.contains($0.lowercased()) }
+    }
+}
+
+enum RouteVoiceCuePlanner {
+    static func remainingToNextTurnMeters(
+        totalDistanceKm: Double,
+        remainingDistanceKm: Double,
+        nextDistanceKm: Double
+    ) -> Int {
+        let traveledKm = max(totalDistanceKm - remainingDistanceKm, 0)
+        let remainingKm = max(nextDistanceKm - traveledKm, 0)
+        return Int((remainingKm * 1000).rounded())
+    }
+
+    static func nextCueMilestone(
+        totalDistanceKm: Double,
+        remainingDistanceKm: Double,
+        nextDistanceKm: Double,
+        spokenMilestones: Set<Int>
+    ) -> Int? {
+        let remainingMeters = remainingToNextTurnMeters(
+            totalDistanceKm: totalDistanceKm,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: nextDistanceKm
+        )
+
+        guard remainingMeters > 10 else { return nil }
+        if remainingMeters <= 80, !spokenMilestones.contains(80) {
+            return 80
+        }
+        if remainingMeters <= 300, !spokenMilestones.contains(300) {
+            return 300
+        }
+        return nil
+    }
+}
+
+@MainActor
+final class VoiceGuidanceController: NSObject, ObservableObject {
+    enum Priority {
+        case normal
+        case high
+    }
+
+    private let synthesizer = AVSpeechSynthesizer()
+    private var lastSpokenText: String?
+    private var lastSpokenAt = Date.distantPast
+
+    func speak(_ text: String, priority: Priority = .normal) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if lastSpokenText == trimmed, Date().timeIntervalSince(lastSpokenAt) < 4 {
+            return
+        }
+
+        if priority == .high {
+            synthesizer.stopSpeaking(at: .immediate)
+        } else if synthesizer.isSpeaking {
+            return
+        }
+
+        let utterance = AVSpeechUtterance(string: trimmed)
+        utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+        utterance.rate = 0.5
+        utterance.pitchMultiplier = 1.0
+        utterance.preUtteranceDelay = 0.05
+
+        lastSpokenText = trimmed
+        lastSpokenAt = Date()
+        synthesizer.speak(utterance)
+    }
 }
 
 enum RouteProgressEstimator {
@@ -200,6 +336,9 @@ struct DrivingNavigationView: View {
     @State private var showHazardAlert = false
     @State private var lastHazardAlertAt = Date.distantPast
     @State private var lastHazardSignature: String?
+    @State private var spokenTurnMilestones = Set<Int>()
+    @State private var hasSpokenStartGuidance = false
+    @StateObject private var voiceGuidance = VoiceGuidanceController()
 
     init(
         destination: Harbor,
@@ -243,6 +382,7 @@ struct DrivingNavigationView: View {
                 setNavigationAwakeMode(enabled: true)
                 refreshHydrationPlan()
                 startHydrationTimer()
+                speakStartGuidanceIfNeeded()
                 // When navigation starts, zoom to the start point first.
                 focusCameraOnStart(animated: false)
                 focusCameraOnUser(animated: false)
@@ -258,6 +398,7 @@ struct DrivingNavigationView: View {
                     evaluateArrival()
                     if !hasShownArrivalMessage {
                         onRerouteRequest(newLocation, remainingRouteCoordinates)
+                        evaluateTurnVoiceGuidance()
                         evaluateHazardAlert(with: newLocation)
                     }
                 }
@@ -274,9 +415,11 @@ struct DrivingNavigationView: View {
             }
             .onChange(of: routeSummary.totalDistance) { _, _ in
                 resetRemainingRoute()
+                resetVoiceGuidanceState()
             }
             .onChange(of: routeSummary.routeCoordinates?.count ?? 0) { _, _ in
                 resetRemainingRoute()
+                resetVoiceGuidanceState()
             }
 
             VStack(spacing: 0) {
@@ -340,6 +483,16 @@ struct DrivingNavigationView: View {
         remainingDistanceKm = routeSummary.totalDistance
     }
 
+    private func resetVoiceGuidanceState() {
+        spokenTurnMilestones.removeAll()
+        hasSpokenStartGuidance = false
+        voiceGuidance.speak(
+            RouteVoiceFormatter.reroutePrompt(primaryInstruction: routeSummary.primaryInstruction),
+            priority: .high
+        )
+        hasSpokenStartGuidance = true
+    }
+
     private func updateRemainingRoute(with location: CLLocation) {
         guard remainingRouteCoordinates.count > 1 else { return }
         let progress = RouteProgressEstimator.remainingProgress(
@@ -370,6 +523,7 @@ struct DrivingNavigationView: View {
         withAnimation(.spring(duration: 0.4)) {
             showArrivalMessage = true
         }
+        voiceGuidance.speak(arrivalMessage ?? "目的地に到着しました", priority: .high)
         let feedback = UINotificationFeedbackGenerator()
         feedback.notificationOccurred(.success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
@@ -481,6 +635,44 @@ struct DrivingNavigationView: View {
             }
     }
 
+    private func speakStartGuidanceIfNeeded() {
+        guard !hasSpokenStartGuidance else { return }
+        guard routeSummary.routeCoordinates?.isEmpty == false else { return }
+        voiceGuidance.speak(
+            RouteVoiceFormatter.startPrompt(
+                primaryInstruction: routeSummary.primaryInstruction,
+                secondaryInstruction: routeSummary.secondaryInstruction
+            )
+        )
+        hasSpokenStartGuidance = true
+    }
+
+    private func evaluateTurnVoiceGuidance() {
+        guard routeSummary.nextDistance > 0 else { return }
+
+        guard let milestone = RouteVoiceCuePlanner.nextCueMilestone(
+            totalDistanceKm: routeSummary.totalDistance,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: routeSummary.nextDistance,
+            spokenMilestones: spokenTurnMilestones
+        ) else {
+            return
+        }
+
+        let remainingMeters = RouteVoiceCuePlanner.remainingToNextTurnMeters(
+            totalDistanceKm: routeSummary.totalDistance,
+            remainingDistanceKm: remainingDistanceKm,
+            nextDistanceKm: routeSummary.nextDistance
+        )
+        spokenTurnMilestones.insert(milestone)
+        voiceGuidance.speak(
+            RouteVoiceFormatter.turnPrompt(
+                primaryInstruction: routeSummary.primaryInstruction,
+                remainingMeters: remainingMeters
+            )
+        )
+    }
+
     private func evaluateHazardAlert(with location: CLLocation) {
         guard !hasShownArrivalMessage else { return }
         guard !remainingRouteCoordinates.isEmpty else { return }
@@ -509,6 +701,7 @@ struct DrivingNavigationView: View {
         activeHazardAlert = hazard
         let feedback = UINotificationFeedbackGenerator()
         feedback.notificationOccurred(.warning)
+        voiceGuidance.speak(RouteVoiceFormatter.hazardPrompt(hazard), priority: .high)
         withAnimation(.easeInOut(duration: 0.25)) {
             showHazardAlert = true
         }
