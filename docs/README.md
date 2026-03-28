@@ -12,6 +12,7 @@
 - `docs/FIREBASE_ANALYTICS_IMPLEMENTATION_GUIDE.md`: Firebase Analytics 実装ガイド（iOS/SwiftUI汎用）
 - `docs/WKWEBVIEW_LEGAL_CACHE_GUIDE.md`: 法務ページの `WKWebView` 表示＋オフラインキャッシュ実装ガイド（iOS汎用）
 - `docs/REST_SPOT_RECOMMENDATION_SPEC.md`: 休憩所レコメンド仕様（お気に入り機能と分離）
+- `docs/FREE_CYCLING_MODE_PLAN.md`: フリーサイクリングモード企画（目的地なし記録/ラップ/UX/実装方針）
 
 ## README 系ドキュメント（ルート配置）
 - `README.md`: 要件定義

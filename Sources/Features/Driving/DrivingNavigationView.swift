@@ -120,8 +120,35 @@ enum RouteVoiceCuePlanner {
     }
 }
 
+enum RouteVoiceUpdatePolicy {
+    static func routeSignature(for summary: RouteSummary) -> String {
+        let roundedTotal = Int((summary.totalDistance * 10).rounded())
+        let roundedNext = Int((summary.nextDistance * 10).rounded())
+        let routeCount = summary.routeCoordinates?.count ?? 0
+        return [
+            RouteVoiceFormatter.conciseManeuver(from: summary.primaryInstruction),
+            summary.secondaryInstruction,
+            "\(roundedTotal)",
+            "\(roundedNext)",
+            "\(routeCount)"
+        ].joined(separator: "|")
+    }
+
+    static func shouldAnnounceReroute(
+        previousSignature: String?,
+        newSummary: RouteSummary,
+        lastAnnouncementAt: Date,
+        now: Date = Date()
+    ) -> Bool {
+        let newSignature = routeSignature(for: newSummary)
+        guard let previousSignature else { return false }
+        guard previousSignature != newSignature else { return false }
+        return now.timeIntervalSince(lastAnnouncementAt) >= 12
+    }
+}
+
 @MainActor
-final class VoiceGuidanceController: NSObject, ObservableObject {
+final class VoiceGuidanceController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     enum Priority {
         case normal
         case high
@@ -131,9 +158,15 @@ final class VoiceGuidanceController: NSObject, ObservableObject {
     private var lastSpokenText: String?
     private var lastSpokenAt = Date.distantPast
 
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
     func speak(_ text: String, priority: Priority = .normal) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        configureAudioSessionIfNeeded()
 
         if lastSpokenText == trimmed, Date().timeIntervalSince(lastSpokenAt) < 4 {
             return
@@ -154,6 +187,40 @@ final class VoiceGuidanceController: NSObject, ObservableObject {
         lastSpokenText = trimmed
         lastSpokenAt = Date()
         synthesizer.speak(utterance)
+    }
+
+    func deactivateSession() {
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+#if DEBUG
+            print("Voice guidance audio session deactivate failed: \(error.localizedDescription)")
+#endif
+        }
+    }
+
+    private func configureAudioSessionIfNeeded() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playback,
+                mode: .spokenAudio,
+                options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
+            )
+            try session.setActive(true)
+        } catch {
+#if DEBUG
+            print("Voice guidance audio session configure failed: \(error.localizedDescription)")
+#endif
+        }
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        deactivateSession()
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        deactivateSession()
     }
 }
 
@@ -338,6 +405,8 @@ struct DrivingNavigationView: View {
     @State private var lastHazardSignature: String?
     @State private var spokenTurnMilestones = Set<Int>()
     @State private var hasSpokenStartGuidance = false
+    @State private var lastRouteVoiceSignature: String?
+    @State private var lastRouteVoiceAnnouncementAt = Date.distantPast
     @StateObject private var voiceGuidance = VoiceGuidanceController()
 
     init(
@@ -382,6 +451,7 @@ struct DrivingNavigationView: View {
                 setNavigationAwakeMode(enabled: true)
                 refreshHydrationPlan()
                 startHydrationTimer()
+                lastRouteVoiceSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
                 speakStartGuidanceIfNeeded()
                 // When navigation starts, zoom to the start point first.
                 focusCameraOnStart(animated: false)
@@ -391,6 +461,7 @@ struct DrivingNavigationView: View {
                 setNavigationAwakeMode(enabled: false)
                 hydrationTimer?.cancel()
                 hydrationTimer = nil
+                voiceGuidance.deactivateSession()
             }
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
@@ -486,10 +557,20 @@ struct DrivingNavigationView: View {
     private func resetVoiceGuidanceState() {
         spokenTurnMilestones.removeAll()
         hasSpokenStartGuidance = false
-        voiceGuidance.speak(
-            RouteVoiceFormatter.reroutePrompt(primaryInstruction: routeSummary.primaryInstruction),
-            priority: .high
+        let shouldAnnounce = RouteVoiceUpdatePolicy.shouldAnnounceReroute(
+            previousSignature: lastRouteVoiceSignature,
+            newSummary: routeSummary,
+            lastAnnouncementAt: lastRouteVoiceAnnouncementAt
         )
+        let newSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
+        lastRouteVoiceSignature = newSignature
+        if shouldAnnounce {
+            lastRouteVoiceAnnouncementAt = Date()
+            voiceGuidance.speak(
+                RouteVoiceFormatter.reroutePrompt(primaryInstruction: routeSummary.primaryInstruction),
+                priority: .high
+            )
+        }
         hasSpokenStartGuidance = true
     }
 
@@ -638,13 +719,14 @@ struct DrivingNavigationView: View {
     private func speakStartGuidanceIfNeeded() {
         guard !hasSpokenStartGuidance else { return }
         guard routeSummary.routeCoordinates?.isEmpty == false else { return }
-        voiceGuidance.speak(
-            RouteVoiceFormatter.startPrompt(
-                primaryInstruction: routeSummary.primaryInstruction,
-                secondaryInstruction: routeSummary.secondaryInstruction
-            )
-        )
         hasSpokenStartGuidance = true
+        let prompt = RouteVoiceFormatter.startPrompt(
+            primaryInstruction: routeSummary.primaryInstruction,
+            secondaryInstruction: routeSummary.secondaryInstruction
+        )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            voiceGuidance.speak(prompt)
+        }
     }
 
     private func evaluateTurnVoiceGuidance() {
