@@ -166,4 +166,24 @@ final class RideLaneSmokeTests: XCTestCase {
         )
         XCTAssertEqual(secondCue, 80)
     }
+
+    func testRouteVoiceUpdatePolicySuppressesDuplicateRerouteAnnouncement() {
+        let summary = RouteSummary(
+            totalDistance: 12.41,
+            etaMinutes: 42,
+            primaryInstruction: "右折",
+            secondaryInstruction: "県道277号",
+            nextDistance: 0.8,
+            routeCoordinates: MockRouteProvider.tokyoBayRoute
+        )
+
+        let signature = RouteVoiceUpdatePolicy.routeSignature(for: summary)
+        let shouldAnnounce = RouteVoiceUpdatePolicy.shouldAnnounceReroute(
+            previousSignature: signature,
+            newSummary: summary,
+            lastAnnouncementAt: .distantPast
+        )
+
+        XCTAssertFalse(shouldAnnounce)
+    }
 }

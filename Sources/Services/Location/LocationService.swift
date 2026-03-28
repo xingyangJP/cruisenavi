@@ -50,12 +50,13 @@ final class LocationService: NSObject, ObservableObject {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 5
         locationManager.headingFilter = 3
+        locationManager.pausesLocationUpdatesAutomatically = false
     }
 
     func requestAuthorization() {
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
+            locationManager.requestAlwaysAuthorization()
         case .authorizedWhenInUse, .authorizedAlways:
             startAuthorizedUpdates()
         case .denied, .restricted:
@@ -75,7 +76,7 @@ final class LocationService: NSObject, ObservableObject {
         case .authorizedWhenInUse, .authorizedAlways:
             startAuthorizedUpdates()
         case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
+            locationManager.requestAlwaysAuthorization()
             trackingMode = .unavailable
             trackingStatusMessage = "位置情報の許可待ち"
         case .denied, .restricted:
@@ -110,6 +111,7 @@ final class LocationService: NSObject, ObservableObject {
         playbackTimer = nil
         lastSpeedSampleLocation = nil
         currentSpeedKmh = 0
+        configureBackgroundLocationIfAvailable()
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
         locationManager.requestLocation()
@@ -169,6 +171,21 @@ final class LocationService: NSObject, ObservableObject {
         #endif
 
         return result.speedKmh
+    }
+
+    private func configureBackgroundLocationIfAvailable() {
+#if targetEnvironment(simulator)
+        return
+#else
+        guard
+            let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
+            backgroundModes.contains("location")
+        else {
+            return
+        }
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.showsBackgroundLocationIndicator = true
+#endif
     }
 }
 

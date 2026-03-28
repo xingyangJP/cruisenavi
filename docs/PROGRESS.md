@@ -426,3 +426,11 @@
 - 音声ナビMVPを追加: `DrivingNavigationView` に `AVSpeechSynthesizer` ベースの音声ガイドを実装し、開始時・次操作約300m前/80m前・危険アラート時・到着時に日本語音声を再生するよう変更
 - 文言整形/発話タイミングの回帰防止として `RideLaneSmokeTests` に音声案内用テストを追加
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.91` から `1.0.92` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.92` へ同期
+- 実機で開始音声が出ない報告に対応し、`VoiceGuidanceController` に `AVAudioSession` (`.playback` + `.spokenAudio`) の明示設定を追加
+- 開始案内は画面遷移直後の欠落を避けるため 0.6 秒遅延で再生するよう調整
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.92` から `1.0.93` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.93` へ同期
+- バックグラウンドでナビが止まる不具合に対応し、`LocationService` で `allowsBackgroundLocationUpdates` / `pausesLocationUpdatesAutomatically = false` を有効化、位置権限要求を `Always` 前提へ調整
+- `ルートを更新しました` 音声の誤連発に対応し、ルート署名比較で同一内容の再ルート音声を抑止
+- 音声案内後に音楽音量が戻らない不具合に対応し、`AVSpeechSynthesizerDelegate` で発話終了/キャンセル時に `AVAudioSession` を `deactivate` する処理を追加
+- フリーサイクリングモード企画として `docs/FREE_CYCLING_MODE_PLAN.md` を追加
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.93` から `1.0.94` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.94` へ同期
