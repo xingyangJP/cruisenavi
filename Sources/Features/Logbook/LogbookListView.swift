@@ -99,6 +99,9 @@ struct LogbookListView: View {
                                     Text(log.startTime.formatted(date: .abbreviated, time: .shortened))
                                         .font(.subheadline)
                                         .foregroundStyle(Color.citrusPrimaryText)
+                                    Text(log.mode.title)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(log.mode == .freeRide ? Color.aquaTeal : Color.citrusOrange)
                                     Text(log.weatherSummary)
                                         .font(.footnote)
                                         .foregroundStyle(Color.citrusSecondaryText)
@@ -201,8 +204,9 @@ private struct LogbookDetailSheet: View {
         }()
 
         let title = "今日のライドストーリー"
-        let subtitle = "\(rideType)ライド \(String(format: "%.1fkm", log.distance))・平均\(String(format: "%.1fkm/h", log.averageSpeed))"
+        let subtitle = "\(log.mode.title) / \(rideType)ライド \(String(format: "%.1fkm", log.distance))・平均\(String(format: "%.1fkm/h", log.averageSpeed))"
         let highlights = [
+            "モード \(log.mode.title)",
             "走行時間 \(durationString(log.duration))",
             "天候 \(log.weatherSummary)",
             "ルート点 \(log.routePoints.count)"
@@ -223,6 +227,10 @@ private struct LogbookDetailSheet: View {
                     Text(log.startTime.formatted(date: .complete, time: .shortened))
                         .font(.headline)
                         .foregroundStyle(Color.citrusPrimaryText)
+
+                    Text(log.mode.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(log.mode == .freeRide ? Color.aquaTeal : Color.citrusOrange)
 
                     HStack(spacing: 16) {
                         miniStat(title: "距離", value: String(format: "%.1f km", log.distance))

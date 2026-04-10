@@ -1,5 +1,5 @@
 # RideLane 技術仕様
-バージョン: 1.0.94  
+バージョン: 1.0.95  
 更新日: 2026-02-28
 
 ## 1. アーキテクチャ
@@ -14,6 +14,7 @@
 3. `MapKitRoadRoutePlanner` が道路ルートを段階的リトライで計算
 4. `RoutePreviewView` で全体確認後、`DrivingNavigationView` で案内開始
 5. `FavoriteDestinationStore` がお気に入り目的地を永続化し、Home/目的地検索の両方で再利用
+6. `フリーライドを開始` では目的地なしの記録セッションを開始し、`DrivingNavigationView` を自動記録モードで表示
 
 ## 3. ルーティング仕様
 - 交通手段候補:
@@ -48,6 +49,7 @@
 - 実機安定性対策として `AVAudioSession` を `.playback` + `.spokenAudio` で有効化し、開始案内は画面表示後に短い遅延を入れて再生
 - 発話終了またはキャンセル時には `AVAudioSession` を非アクティブ化し、バックグラウンド音楽のダッキングが残留しないようにする
 - 再ルート音声はルート署名（主案内/距離/座標数）ベースで重複抑止し、同一内容では再生しない
+- フリーライドでは再ルート、到着判定、分岐音声、雨回避提案を無効化し、距離/速度/経過時間のみを表示する
 
 ## 4.2 お気に入り目的地仕様
 - `FavoriteDestinationStore`（UserDefaults保存）でお気に入りを永続化
@@ -73,11 +75,12 @@
 - ナビ終了時に `VoyageLog` を `HKWorkout`（cycling）として保存
 - ルートポイントは `HKWorkoutRoute` として保存
 - HealthKit 権限は初回同期時に要求
+- `VoyageLog.mode` は `guidedNavigation` / `freeRide` を保持し、既存ログ未保存時は `guidedNavigation` 扱いで後方互換を維持
 
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.94`
+- バージョン: `MARKETING_VERSION = 1.0.95`
 
 ## 8. オンボーディング（ウォークスルー）
 - `NavigationDashboardView` で初回起動時にオーバーレイ型ウォークスルーを表示

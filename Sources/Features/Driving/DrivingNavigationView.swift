@@ -375,8 +375,11 @@ enum RouteHazardEvaluator {
 }
 
 struct DrivingNavigationView: View {
-    let destination: Harbor
+    let destination: Harbor?
     let routeSummary: RouteSummary
+    let sessionMode: RideSessionMode
+    let rideStartTime: Date?
+    let rideStartRouteIndex: Int
     let rainAvoidanceAlert: RainAvoidanceAlert?
     let weatherSnapshot: WeatherSnapshot
     let onExit: () -> Void
@@ -410,8 +413,11 @@ struct DrivingNavigationView: View {
     @StateObject private var voiceGuidance = VoiceGuidanceController()
 
     init(
-        destination: Harbor,
+        destination: Harbor?,
         routeSummary: RouteSummary,
+        sessionMode: RideSessionMode,
+        rideStartTime: Date?,
+        rideStartRouteIndex: Int,
         rainAvoidanceAlert: RainAvoidanceAlert?,
         weatherSnapshot: WeatherSnapshot,
         onExit: @escaping () -> Void,
@@ -422,6 +428,9 @@ struct DrivingNavigationView: View {
     ) {
         self.destination = destination
         self.routeSummary = routeSummary
+        self.sessionMode = sessionMode
+        self.rideStartTime = rideStartTime
+        self.rideStartRouteIndex = rideStartRouteIndex
         self.rainAvoidanceAlert = rainAvoidanceAlert
         self.weatherSnapshot = weatherSnapshot
         self.onExit = onExit
@@ -432,6 +441,10 @@ struct DrivingNavigationView: View {
         let initialCoordinates = routeSummary.routeCoordinates ?? []
         _remainingRouteCoordinates = State(initialValue: initialCoordinates)
         _remainingDistanceKm = State(initialValue: routeSummary.totalDistance)
+    }
+
+    private var isFreeRide: Bool {
+        sessionMode == .freeRide
     }
 
     var body: some View {
@@ -451,10 +464,16 @@ struct DrivingNavigationView: View {
                 setNavigationAwakeMode(enabled: true)
                 refreshHydrationPlan()
                 startHydrationTimer()
-                lastRouteVoiceSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
+                if isFreeRide {
+                    syncFreeRideProgress()
+                } else {
+                    lastRouteVoiceSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
+                }
                 speakStartGuidanceIfNeeded()
-                // When navigation starts, zoom to the start point first.
-                focusCameraOnStart(animated: false)
+                if !isFreeRide {
+                    // When navigation starts, zoom to the start point first.
+                    focusCameraOnStart(animated: false)
+                }
                 focusCameraOnUser(animated: false)
             }
             .onDisappear {
@@ -465,12 +484,16 @@ struct DrivingNavigationView: View {
             }
             .onChange(of: locationService.currentLocation) { _, newLocation in
                 if let newLocation {
-                    updateRemainingRoute(with: newLocation)
-                    evaluateArrival()
-                    if !hasShownArrivalMessage {
-                        onRerouteRequest(newLocation, remainingRouteCoordinates)
-                        evaluateTurnVoiceGuidance()
-                        evaluateHazardAlert(with: newLocation)
+                    if isFreeRide {
+                        syncFreeRideProgress()
+                    } else {
+                        updateRemainingRoute(with: newLocation)
+                        evaluateArrival()
+                        if !hasShownArrivalMessage {
+                            onRerouteRequest(newLocation, remainingRouteCoordinates)
+                            evaluateTurnVoiceGuidance()
+                            evaluateHazardAlert(with: newLocation)
+                        }
                     }
                 }
                 focusCameraOnUser(animated: true)
@@ -479,16 +502,20 @@ struct DrivingNavigationView: View {
                 refreshHydrationPlan()
             }
             .onChange(of: remainingDistanceKm) { _, _ in
-                evaluateArrival()
+                if !isFreeRide {
+                    evaluateArrival()
+                }
             }
             .onChange(of: locationService.heading) { _, _ in
                 focusCameraOnUser(animated: true)
             }
             .onChange(of: routeSummary.totalDistance) { _, _ in
+                guard !isFreeRide else { return }
                 resetRemainingRoute()
                 resetVoiceGuidanceState()
             }
             .onChange(of: routeSummary.routeCoordinates?.count ?? 0) { _, _ in
+                guard !isFreeRide else { return }
                 resetRemainingRoute()
                 resetVoiceGuidanceState()
             }
@@ -497,7 +524,9 @@ struct DrivingNavigationView: View {
                 HStack(alignment: .top) {
                     VStack(spacing: 10) {
                         ControlButton(icon: "xmark", color: .citrusOrange, foreground: .white, action: onExit)
-                        ControlButton(icon: "line.3.horizontal", color: .citrusCard, foreground: .citrusPrimaryText, action: onChangeDestination)
+                        if !isFreeRide {
+                            ControlButton(icon: "line.3.horizontal", color: .citrusCard, foreground: .citrusPrimaryText, action: onChangeDestination)
+                        }
                     }
 
                     Spacer()
@@ -507,7 +536,7 @@ struct DrivingNavigationView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 56)
 
-                if let rainAvoidanceAlert {
+                if !isFreeRide, let rainAvoidanceAlert {
                     rainAvoidanceBanner(alert: rainAvoidanceAlert)
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
@@ -538,8 +567,10 @@ struct DrivingNavigationView: View {
 
                 DrivingInstructionCard(
                     route: routeSummary,
+                    sessionMode: sessionMode,
                     currentSpeedKmh: locationService.currentSpeedKmh,
                     remainingDistanceKm: remainingDistanceKm,
+                    rideElapsedTime: rideElapsedTime,
                     onChange: onChangeDestination
                 )
                 .padding(.horizontal, 16)
@@ -550,11 +581,16 @@ struct DrivingNavigationView: View {
     }
 
     private func resetRemainingRoute() {
+        guard !isFreeRide else {
+            syncFreeRideProgress()
+            return
+        }
         remainingRouteCoordinates = routeSummary.routeCoordinates ?? []
         remainingDistanceKm = routeSummary.totalDistance
     }
 
     private func resetVoiceGuidanceState() {
+        guard !isFreeRide else { return }
         spokenTurnMilestones.removeAll()
         hasSpokenStartGuidance = false
         let shouldAnnounce = RouteVoiceUpdatePolicy.shouldAnnounceReroute(
@@ -575,6 +611,10 @@ struct DrivingNavigationView: View {
     }
 
     private func updateRemainingRoute(with location: CLLocation) {
+        guard !isFreeRide else {
+            syncFreeRideProgress()
+            return
+        }
         guard remainingRouteCoordinates.count > 1 else { return }
         let progress = RouteProgressEstimator.remainingProgress(
             currentCoordinate: location.coordinate,
@@ -585,6 +625,8 @@ struct DrivingNavigationView: View {
     }
 
     private func evaluateArrival() {
+        guard !isFreeRide else { return }
+        guard let destination else { return }
         guard !hasShownArrivalMessage else { return }
         let distanceToDestination: CLLocationDistance = {
             if let coordinate = locationService.currentLocation?.coordinate {
@@ -645,7 +687,9 @@ struct DrivingNavigationView: View {
     }
 
     private func focusCameraOnStart(animated: Bool) {
-        let start = routeSummary.routeCoordinates?.first ?? destination.coordinate
+        let start = routeSummary.routeCoordinates?.first
+            ?? destination?.coordinate
+            ?? locationService.currentCoordinateOrDefault()
         setRegion(center: start, animated: animated)
     }
 
@@ -653,7 +697,8 @@ struct DrivingNavigationView: View {
         let location = locationService.currentLocation
         let coordinate = location?.coordinate
             ?? routeSummary.routeCoordinates?.first
-            ?? destination.coordinate
+            ?? destination?.coordinate
+            ?? locationService.currentCoordinateOrDefault()
         let heading = currentHeading(from: location)
         setCamera(center: coordinate, heading: heading, animated: animated)
     }
@@ -718,18 +763,24 @@ struct DrivingNavigationView: View {
 
     private func speakStartGuidanceIfNeeded() {
         guard !hasSpokenStartGuidance else { return }
-        guard routeSummary.routeCoordinates?.isEmpty == false else { return }
         hasSpokenStartGuidance = true
-        let prompt = RouteVoiceFormatter.startPrompt(
-            primaryInstruction: routeSummary.primaryInstruction,
-            secondaryInstruction: routeSummary.secondaryInstruction
-        )
+        let prompt: String
+        if isFreeRide {
+            prompt = "フリーライドを開始します。自動で記録します"
+        } else {
+            guard routeSummary.routeCoordinates?.isEmpty == false else { return }
+            prompt = RouteVoiceFormatter.startPrompt(
+                primaryInstruction: routeSummary.primaryInstruction,
+                secondaryInstruction: routeSummary.secondaryInstruction
+            )
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             voiceGuidance.speak(prompt)
         }
     }
 
     private func evaluateTurnVoiceGuidance() {
+        guard !isFreeRide else { return }
         guard routeSummary.nextDistance > 0 else { return }
 
         guard let milestone = RouteVoiceCuePlanner.nextCueMilestone(
@@ -756,6 +807,7 @@ struct DrivingNavigationView: View {
     }
 
     private func evaluateHazardAlert(with location: CLLocation) {
+        guard !isFreeRide else { return }
         guard !hasShownArrivalMessage else { return }
         guard !remainingRouteCoordinates.isEmpty else { return }
 
@@ -894,12 +946,26 @@ struct DrivingNavigationView: View {
         )
         .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
     }
+
+    private var rideElapsedTime: TimeInterval {
+        guard let rideStartTime else { return 0 }
+        return max(Date().timeIntervalSince(rideStartTime), 0)
+    }
+
+    private func syncFreeRideProgress() {
+        let startIndex = min(rideStartRouteIndex, locationService.routePoints.count)
+        let capturedRoute = Array(locationService.routePoints.dropFirst(startIndex))
+        remainingRouteCoordinates = capturedRoute
+        remainingDistanceKm = RouteProgressEstimator.pathDistanceMeters(of: capturedRoute) / 1000.0
+    }
 }
 
 private struct DrivingInstructionCard: View {
     let route: RouteSummary
+    let sessionMode: RideSessionMode
     let currentSpeedKmh: Double
     let remainingDistanceKm: Double
+    let rideElapsedTime: TimeInterval
     var onChange: () -> Void
 
     var body: some View {
@@ -922,10 +988,17 @@ private struct DrivingInstructionCard: View {
                 .foregroundStyle(Color.citrusSecondaryText)
 
             HStack {
-                Label("ETA \(route.etaString)", systemImage: "clock")
-                Spacer()
-                Button("目的地再設定", action: onChange)
-                    .font(.footnote.bold())
+                if sessionMode == .freeRide {
+                    Label(durationString(rideElapsedTime), systemImage: "clock")
+                    Spacer()
+                    Text("自動記録中")
+                        .font(.footnote.bold())
+                } else {
+                    Label("ETA \(route.etaString)", systemImage: "clock")
+                    Spacer()
+                    Button("目的地再設定", action: onChange)
+                        .font(.footnote.bold())
+                }
             }
             .font(.footnote)
             .foregroundStyle(Color.citrusSecondaryText)
@@ -937,6 +1010,16 @@ private struct DrivingInstructionCard: View {
                 .stroke(Color.citrusBorder)
         )
         .shadow(color: .black.opacity(0.08), radius: 12, y: 6)
+    }
+
+    private func durationString(_ duration: TimeInterval) -> String {
+        let totalMinutes = Int(duration / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 {
+            return "\(hours)時間\(minutes)分"
+        }
+        return "\(minutes)分"
     }
 }
 

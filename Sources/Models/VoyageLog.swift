@@ -1,6 +1,20 @@
 import Foundation
 import CoreLocation
 
+enum VoyageLogMode: String, Codable {
+    case guidedNavigation
+    case freeRide
+
+    var title: String {
+        switch self {
+        case .guidedNavigation:
+            return "目的地ナビ"
+        case .freeRide:
+            return "フリーライド"
+        }
+    }
+}
+
 struct VoyageLog: Identifiable {
     let id: UUID
     let startTime: Date
@@ -9,6 +23,7 @@ struct VoyageLog: Identifiable {
     let distance: Double
     let averageSpeed: Double
     let weatherSummary: String
+    let mode: VoyageLogMode
 
     var duration: TimeInterval {
         endTime.timeIntervalSince(startTime)
@@ -22,7 +37,8 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 18.4,
             averageSpeed: 12.3,
-            weatherSummary: "晴れ / 北東 12km/h"
+            weatherSummary: "晴れ / 北東 12km/h",
+            mode: .guidedNavigation
         ),
         VoyageLog(
             id: UUID(),
@@ -31,7 +47,8 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 5.2,
             averageSpeed: 7.1,
-            weatherSummary: "くもり / 南西 8km/h"
+            weatherSummary: "くもり / 南西 8km/h",
+            mode: .freeRide
         )
     ]
 }

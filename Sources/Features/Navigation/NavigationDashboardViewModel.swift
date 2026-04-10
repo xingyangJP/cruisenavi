@@ -80,6 +80,11 @@ struct RestSpotSuggestion: Identifiable {
     let shouldRestNow: Bool
 }
 
+enum RideSessionMode: Equatable {
+    case guidedNavigation
+    case freeRide
+}
+
 @MainActor
 final class NavigationDashboardViewModel: ObservableObject {
     enum RideLogHealthStatus {
@@ -117,6 +122,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var latestRideReward: RideCompletionReward?
     @Published var restSpotSuggestion: RestSpotSuggestion?
     @Published var healthSyncEnabled: Bool
+    @Published var activeRideSessionMode: RideSessionMode?
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -169,6 +175,7 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func startNavigation(to harbor: Harbor, mode: CyclingRouteMode) {
         selectedRouteMode = mode
+        activeRideSessionMode = .guidedNavigation
         activeDestination = harbor
         routeSummary = nil
         pendingRoute = nil
@@ -180,6 +187,7 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func endNavigation() {
         finalizeRideLogIfNeeded()
+        activeRideSessionMode = nil
         activeDestination = nil
         routeSummary = nil
         pendingRoute = nil
@@ -190,10 +198,29 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func beginDrivingNavigation() {
         guard let pendingRoute else { return }
+        activeRideSessionMode = .guidedNavigation
         routeSummary = pendingRoute
         self.pendingRoute = nil
         beginRideLogIfNeeded()
         Task { await refreshRainAvoidanceAlert(force: true) }
+    }
+
+    func startFreeRide() {
+        activeRideSessionMode = .freeRide
+        activeDestination = nil
+        pendingRoute = nil
+        rainAvoidanceAlert = nil
+        lastRainAlertRefreshAt = .distantPast
+        isGeneratingRoute = false
+        routeSummary = RouteSummary(
+            totalDistance: 0,
+            etaMinutes: 0,
+            primaryInstruction: "フリーライド中",
+            secondaryInstruction: "自動で距離・時間・ルートを記録しています",
+            nextDistance: 0,
+            routeCoordinates: nil
+        )
+        beginRideLogIfNeeded()
     }
 
     func cancelRoutePreview() {
@@ -561,6 +588,7 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     private func finalizeRideLogIfNeeded() {
         guard let startTime = activeRideStartTime else { return }
+        let rideMode = activeRideSessionMode == .freeRide ? VoyageLogMode.freeRide : VoyageLogMode.guidedNavigation
         let endTime = Date()
         let startIndex = min(activeRideStartRouteIndex ?? 0, locationService.routePoints.count)
         let capturedRoute = Array(locationService.routePoints.dropFirst(startIndex))
@@ -583,7 +611,8 @@ final class NavigationDashboardViewModel: ObservableObject {
             routePoints: resolvedRoute,
             distance: distanceMeters / 1000.0,
             averageSpeed: averageSpeedKmh,
-            weatherSummary: weatherSummary
+            weatherSummary: weatherSummary,
+            mode: rideMode
         )
         voyageLogs.insert(newLog, at: 0)
         latestRideReward = buildRideCompletionReward(newLog: newLog, previousBestDistance: previousBestDistance)
@@ -617,6 +646,10 @@ final class NavigationDashboardViewModel: ObservableObject {
         // Some rides can end with too few GPS samples (e.g. poor fix at start/end), which renders as a straight line.
         // In that case, fallback to the active navigation route geometry so the detail map keeps route shape.
         if capturedRoute.count >= 3 {
+            return capturedRoute
+        }
+
+        guard activeRideSessionMode == .guidedNavigation else {
             return capturedRoute
         }
 
@@ -827,10 +860,18 @@ final class NavigationDashboardViewModel: ObservableObject {
             badges.append("目標まで\(String(format: "%.1f", remaining))km")
         }
         return RideCompletionReward(
-            title: "ライド完了おつかれさま",
+            title: newLog.mode == .freeRide ? "フリーライド完了おつかれさま" : "ライド完了おつかれさま",
             subtitle: String(format: "%.1fkm / 平均%.1fkm/h", newLog.distance, newLog.averageSpeed),
             badges: badges
         )
+    }
+
+    var activeRideStartTimeValue: Date? {
+        activeRideStartTime
+    }
+
+    var activeRideStartRouteIndexValue: Int {
+        activeRideStartRouteIndex ?? locationService.routePoints.count
     }
 }
 
@@ -899,6 +940,7 @@ private struct PersistedVoyageLog: Codable {
     let distance: Double
     let averageSpeed: Double
     let weatherSummary: String
+    let mode: VoyageLogMode?
 
     init(_ model: VoyageLog) {
         id = model.id
@@ -908,6 +950,7 @@ private struct PersistedVoyageLog: Codable {
         distance = model.distance
         averageSpeed = model.averageSpeed
         weatherSummary = model.weatherSummary
+        mode = model.mode
     }
 
     var model: VoyageLog {
@@ -918,7 +961,8 @@ private struct PersistedVoyageLog: Codable {
             routePoints: routePoints.map(\.model),
             distance: distance,
             averageSpeed: averageSpeed,
-            weatherSummary: weatherSummary
+            weatherSummary: weatherSummary,
+            mode: mode ?? .guidedNavigation
         )
     }
 }
