@@ -186,4 +186,13 @@ final class RideLaneSmokeTests: XCTestCase {
 
         XCTAssertFalse(shouldAnnounce)
     }
+
+    func testVoyageLogModeTitleForFreeRide() {
+        XCTAssertEqual(VoyageLogMode.freeRide.title, "フリーライド")
+        XCTAssertEqual(VoyageLogMode.guidedNavigation.title, "目的地ナビ")
+    }
+
+    func testVoyageLogSampleIncludesFreeRideMode() {
+        XCTAssertTrue(VoyageLog.sample.contains(where: { $0.mode == .freeRide }))
+    }
 }

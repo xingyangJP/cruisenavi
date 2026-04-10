@@ -124,6 +124,19 @@ struct NavigationDashboardView: View {
                         }
                         .foregroundStyle(Color(red: 0.36, green: 0.26, blue: 0))
 
+                        Button {
+                            viewModel.startFreeRide()
+                            Analytics.logEvent("free_ride_start", parameters: nil)
+                            showDrivingMode = true
+                        } label: {
+                            Label("フリーライドを開始", systemImage: "figure.outdoor.cycle")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.aquaTeal, in: RoundedRectangle(cornerRadius: 20))
+                        }
+                        .foregroundStyle(.white)
+
                         WeatherCardView(
                             snapshot: viewModel.weatherSnapshot
                         )
@@ -221,11 +234,13 @@ struct NavigationDashboardView: View {
             }
         }
         .fullScreenCover(isPresented: $showDrivingMode) {
-            if let destination = viewModel.activeDestination,
-               let route = viewModel.routeSummary {
+            if let route = viewModel.routeSummary {
                 DrivingNavigationView(
-                    destination: destination,
+                    destination: viewModel.activeDestination,
                     routeSummary: route,
+                    sessionMode: viewModel.activeRideSessionMode ?? .guidedNavigation,
+                    rideStartTime: viewModel.activeRideStartTimeValue,
+                    rideStartRouteIndex: viewModel.activeRideStartRouteIndexValue,
                     rainAvoidanceAlert: viewModel.rainAvoidanceAlert,
                     weatherSnapshot: viewModel.weatherSnapshot,
                     onExit: {
@@ -324,7 +339,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.94"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.95"
         return "ver\(version)"
     }
 
