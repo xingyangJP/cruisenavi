@@ -1,5 +1,5 @@
 # RideLane 技術仕様
-バージョン: 1.0.95  
+バージョン: 1.0.96  
 更新日: 2026-02-28
 
 ## 1. アーキテクチャ
@@ -80,7 +80,7 @@
 ## 7. ビルド
 - プロジェクト: `SeaNavi/RideLane.xcodeproj`
 - スキーム: `SeaNavi`
-- バージョン: `MARKETING_VERSION = 1.0.95`
+- バージョン: `MARKETING_VERSION = 1.0.96`
 
 ## 8. オンボーディング（ウォークスルー）
 - `NavigationDashboardView` で初回起動時にオーバーレイ型ウォークスルーを表示

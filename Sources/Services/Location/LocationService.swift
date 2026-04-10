@@ -12,11 +12,11 @@ final class LocationService: NSObject, ObservableObject {
         var label: String {
             switch self {
             case .gps:
-                return "実GPS"
+                return L10n.tr("実GPS")
             case .mockPlayback:
-                return "フォールバック"
+                return L10n.tr("フォールバック")
             case .unavailable:
-                return "位置情報なし"
+                return L10n.tr("位置情報なし")
             }
         }
 
@@ -35,7 +35,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published var routePoints: [CLLocationCoordinate2D] = []
     @Published var currentSpeedKmh: Double = 0
     @Published var trackingMode: TrackingMode = .unavailable
-    @Published var trackingStatusMessage: String = "位置情報の取得を待機中"
+    @Published var trackingStatusMessage: String = L10n.tr("位置情報の取得を待機中")
 
     private let locationManager = CLLocationManager()
     private var playbackTimer: AnyCancellable?
@@ -60,15 +60,15 @@ final class LocationService: NSObject, ObservableObject {
         case .authorizedWhenInUse, .authorizedAlways:
             startAuthorizedUpdates()
         case .denied, .restricted:
-            handleUnavailable(reason: "位置情報の許可が必要です")
+            handleUnavailable(reason: L10n.tr("位置情報の許可が必要です"))
         @unknown default:
-            handleUnavailable(reason: "位置情報状態を判定できません")
+            handleUnavailable(reason: L10n.tr("位置情報状態を判定できません"))
         }
     }
 
     func startTracking() {
         guard CLLocationManager.locationServicesEnabled() else {
-            handleNoLocationService(reason: "端末の位置情報サービスが無効です")
+            handleNoLocationService(reason: L10n.tr("端末の位置情報サービスが無効です"))
             return
         }
 
@@ -78,11 +78,11 @@ final class LocationService: NSObject, ObservableObject {
         case .notDetermined:
             locationManager.requestAlwaysAuthorization()
             trackingMode = .unavailable
-            trackingStatusMessage = "位置情報の許可待ち"
+            trackingStatusMessage = L10n.tr("位置情報の許可待ち")
         case .denied, .restricted:
-            handleNoLocationService(reason: "位置情報の許可がありません")
+            handleNoLocationService(reason: L10n.tr("位置情報の許可がありません"))
         @unknown default:
-            handleNoLocationService(reason: "位置情報状態を判定できません")
+            handleNoLocationService(reason: L10n.tr("位置情報状態を判定できません"))
         }
     }
 
@@ -116,7 +116,7 @@ final class LocationService: NSObject, ObservableObject {
         locationManager.startUpdatingHeading()
         locationManager.requestLocation()
         trackingMode = .gps
-        trackingStatusMessage = "GPSアクティブ"
+        trackingStatusMessage = L10n.tr("GPSアクティブ")
     }
 
     private func handleNoLocationService(reason: String) {
@@ -138,7 +138,7 @@ final class LocationService: NSObject, ObservableObject {
     private func startMockPlayback() {
         stopTracking()
         trackingMode = .mockPlayback
-        trackingStatusMessage = "モック位置で追跡中"
+        trackingStatusMessage = L10n.tr("モック位置で追跡中")
 
         let mockPoints = MockRouteProvider.tokyoBayRoute
         playbackTimer = Timer.publish(every: 1.0, on: .main, in: .common)
@@ -238,7 +238,7 @@ extension LocationService: CLLocationManagerDelegate {
         routePoints.append(location.coordinate)
         lastSpeedSampleLocation = location
         trackingMode = .gps
-        trackingStatusMessage = "GPSアクティブ"
+        trackingStatusMessage = L10n.tr("GPSアクティブ")
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
@@ -250,7 +250,7 @@ extension LocationService: CLLocationManagerDelegate {
         print("Location manager error:", error)
         #endif
         if trackingMode == .gps {
-            trackingStatusMessage = "GPS更新エラー"
+            trackingStatusMessage = L10n.tr("GPS更新エラー")
         }
     }
 
@@ -259,13 +259,13 @@ extension LocationService: CLLocationManagerDelegate {
         case .authorizedAlways, .authorizedWhenInUse:
             startAuthorizedUpdates()
         case .denied, .restricted:
-            handleNoLocationService(reason: "位置情報の許可がありません")
+            handleNoLocationService(reason: L10n.tr("位置情報の許可がありません"))
         case .notDetermined:
             trackingMode = .unavailable
-            trackingStatusMessage = "位置情報の許可待ち"
+            trackingStatusMessage = L10n.tr("位置情報の許可待ち")
         @unknown default:
             trackingMode = .unavailable
-            trackingStatusMessage = "位置情報状態を判定できません"
+            trackingStatusMessage = L10n.tr("位置情報状態を判定できません")
         }
     }
 }

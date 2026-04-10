@@ -21,10 +21,10 @@ struct PortsListView: View {
                         Text(harbor.name)
                             .font(.headline)
                             .foregroundStyle(Color.citrusPrimaryText)
-                        Text("カテゴリ: \(harbor.facilities.joined(separator: ", "))")
+                        Text(L10n.format("カテゴリ: %@", L10n.localizedList(harbor.facilities)))
                             .font(.footnote)
                             .foregroundStyle(Color.citrusSecondaryText)
-                        Text("注意事項: \(harbor.restrictions.joined(separator: ", "))")
+                        Text(L10n.format("注意事項: %@", L10n.localizedList(harbor.restrictions)))
                             .font(.footnote)
                             .foregroundStyle(Color.citrusOrange.opacity(0.9))
                     }
@@ -50,7 +50,9 @@ struct PortsListView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isExpanded ? "スポット情報を閉じる" : "スポット情報をもっと見る")
+                    .accessibilityLabel(
+                        L10n.tr(isExpanded ? "スポット情報を閉じる" : "スポット情報をもっと見る")
+                    )
                 }
             }
         }

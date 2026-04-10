@@ -438,3 +438,15 @@
 - Home に `フリーライドを開始` を追加し、目的地なしで直接記録画面へ入るMVPを実装
 - `VoyageLog` に `mode`（`guidedNavigation` / `freeRide`）を追加し、ログ一覧・詳細でフリーライド種別を表示
 - フリーライド中は再ルート、到着判定、分岐音声、目的地再設定を無効化し、距離・速度・経過時間の自動表示に限定
+- dev作業継続として `codex/dev` 上で音声再ルート案内の誤連発と多言語化対応に着手
+- 音声案内不具合は局所判定強化ではなく仕様変更で対処し、`DrivingNavigationView` から自動再ルート時の音声文言自体を撤去して `ルートを変更しました` 系の連発を根本排除
+- `AppLanguage` / `L10n` を導入し、端末の優先言語（ja/en）から UI 文言と `AVSpeechSynthesisVoice` を自動選択する基盤を追加
+- `Localizable.strings` を `ja.lproj` / `en.lproj` で拡充し、Home / 目的地検索 / ナビ / ログ / 天気 / Health導線 / オンボーディング / 音声文言を日英対応
+- 補間付きの未ローカライズ文言（`ETA`, `カテゴリ`, `注意事項`, `Health:` など）は `L10n.format` に寄せ、Map注釈・アクセシビリティ文言も `L10n.tr` で明示ローカライズ
+- `WeatherSnapshot` に天候/風向/タグ配列のローカライズ補助を追加し、英語条件でも天気カードの見た目と要約が崩れないよう調整
+- `RouteSummary.etaString` を言語依存フォーマットへ変更し、日本語では `1時間20分`、英語では `1h 20m` で表示されるよう変更
+- `RideLaneSmokeTests` の旧 reroute 音声テストを削除し、英語キーワード入力でも正しい音声指示へ正規化されるテストへ置換
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.95` から `1.0.96` に更新し、Homeの `ver` 表示デフォルト値と README 群バージョン表記を `1.0.96` へ同期
+- ビルド確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` が `BUILD SUCCEEDED`
+- テスト確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test -derivedDataPath /tmp/RideLaneL10nTests` を実行し `RideLaneSmokeTests` 12件 PASS（`TEST SUCCEEDED`）を確認
+- 実機確認は未実施。端末言語を日本語/英語で切り替え、Home・目的地検索・ナビ開始音声・危険音声・ログ詳細共有文面を確認する必要あり

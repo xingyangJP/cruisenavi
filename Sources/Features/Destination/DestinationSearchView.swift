@@ -103,7 +103,7 @@ private struct DestinationRow: View {
                         Text(harbor.name)
                             .font(.headline)
                             .foregroundStyle(Color.citrusPrimaryText)
-                        Text("カテゴリ: \(harbor.facilities.joined(separator: ", "))")
+                        Text(L10n.format("カテゴリ: %@", L10n.localizedList(harbor.facilities)))
                             .font(.caption)
                             .foregroundStyle(Color.citrusSecondaryText)
                     }
@@ -112,7 +112,7 @@ private struct DestinationRow: View {
                         Text(String(format: "%.1f km", harbor.distance))
                             .font(.headline)
                             .foregroundStyle(Color.citrusPrimaryText)
-                        Text("ETA \(harbor.etaMinutes)分")
+                        Text(L10n.format("ETA %d分", harbor.etaMinutes))
                             .font(.caption)
                             .foregroundStyle(Color.citrusSecondaryText)
                     }

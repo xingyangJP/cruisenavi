@@ -37,7 +37,7 @@ struct WeatherCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(snapshot.condition)
+                    Text(L10n.localizedWeatherCondition(snapshot.condition))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                     Text(rainText)
@@ -46,9 +46,9 @@ struct WeatherCardView: View {
                 }
 
                 HStack(spacing: 10) {
-                    metricPill("風速", String(format: "%.1f m/s", snapshot.windSpeed), icon: "wind")
-                    metricPill("風向", snapshot.windCompass, icon: "location.north.line")
-                    metricPill("路面", String(format: "%.1f", snapshot.roadRisk), icon: "exclamationmark.road.lane")
+                    metricPill(L10n.tr("風速"), String(format: "%.1f m/s", snapshot.windSpeed), icon: "wind")
+                    metricPill(L10n.tr("風向"), L10n.localizedWindCompass(snapshot.windCompass), icon: "location.north.line")
+                    metricPill(L10n.tr("路面"), String(format: "%.1f", snapshot.roadRisk), icon: "exclamationmark.road.lane")
                 }
 
                 attributionRow
@@ -62,24 +62,24 @@ struct WeatherCardView: View {
     private var rainText: String {
         if let minutes = snapshot.precipitationStartMinutes {
             if (30...60).contains(minutes) {
-                return "雨回避アラート: \(minutes)分後に雨予測"
+                return L10n.format("雨回避アラート: %d分後に雨予測", minutes)
             }
-            return "\(minutes)分後に雨が降る見込み"
+            return L10n.format("%d分後に雨が降る見込み", minutes)
         }
-        return "当面は降雨予測なし"
+        return L10n.tr("当面は降雨予測なし")
     }
 
     private var iconName: String {
-        switch snapshot.condition {
-        case let text where text.contains("雨"):
+        switch L10n.canonicalWeatherKey(for: snapshot.condition) {
+        case "雨":
             return "cloud.rain.fill"
-        case let text where text.contains("雪"):
+        case "雪":
             return "cloud.snow.fill"
-        case let text where text.contains("霧"):
+        case "霧":
             return "cloud.fog.fill"
-        case let text where text.contains("晴れ時々くもり"):
+        case "晴れ時々くもり":
             return "cloud.sun.fill"
-        case let text where text.contains("くもり"):
+        case "くもり":
             return "cloud.fill"
         default:
             return "sun.max.fill"
@@ -87,14 +87,14 @@ struct WeatherCardView: View {
     }
 
     private var gradientColors: [Color] {
-        switch snapshot.condition {
-        case let text where text.contains("雨"):
+        switch L10n.canonicalWeatherKey(for: snapshot.condition) {
+        case "雨":
             return [Color(red: 0.19, green: 0.31, blue: 0.51), Color(red: 0.08, green: 0.11, blue: 0.24)]
-        case let text where text.contains("雪"):
+        case "雪":
             return [Color(red: 0.47, green: 0.65, blue: 0.78), Color(red: 0.22, green: 0.33, blue: 0.46)]
-        case let text where text.contains("晴れ時々くもり"):
+        case "晴れ時々くもり":
             return [Color(red: 0.40, green: 0.62, blue: 0.88), Color(red: 0.27, green: 0.42, blue: 0.76)]
-        case let text where text.contains("くもり"):
+        case "くもり":
             return [Color(red: 0.42, green: 0.51, blue: 0.63), Color(red: 0.23, green: 0.30, blue: 0.40)]
         default:
             return [Color(red: 0.31, green: 0.66, blue: 0.98), Color(red: 0.23, green: 0.44, blue: 0.88)]

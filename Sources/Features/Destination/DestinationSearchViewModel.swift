@@ -36,16 +36,16 @@ final class DestinationSearchViewModel: ObservableObject {
 
     var resultSectionTitle: String {
         if isTextSearchActive {
-            return "現在地から200km圏内の検索結果"
+            return L10n.tr("現在地から200km圏内の検索結果")
         }
-        return "現在地から10km〜100km圏内のおすすめスポット"
+        return L10n.tr("現在地から10km〜100km圏内のおすすめスポット")
     }
 
     var emptyStateMessage: String {
         if isTextSearchActive {
-            return "現在地から200km圏内に候補がありません"
+            return L10n.tr("現在地から200km圏内に候補がありません")
         }
-        return "現在地から10km〜100km圏内におすすめスポットがありません"
+        return L10n.tr("現在地から10km〜100km圏内におすすめスポットがありません")
     }
 
     private func scheduleSearch() {
@@ -118,7 +118,8 @@ final class DestinationSearchViewModel: ObservableObject {
 
 final class NearbySpotProvider {
     private let defaultQueries = [
-        "自転車", "サイクリング", "公園", "休憩", "展望", "カフェ"
+        "自転車", "サイクリング", "公園", "休憩", "展望", "カフェ",
+        "cycling", "bike", "park", "rest", "viewpoint", "cafe"
     ]
 
     func fetchNearby(

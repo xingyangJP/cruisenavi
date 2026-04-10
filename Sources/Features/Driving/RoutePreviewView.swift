@@ -20,7 +20,7 @@ struct RoutePreviewView: View {
                         .stroke(Color.aquaTeal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 }
                 if let startCoordinate = routeSummary.routeCoordinates?.first {
-                    Annotation("出発", coordinate: startCoordinate) {
+                    Annotation(L10n.tr("出発"), coordinate: startCoordinate) {
                         Circle().fill(Color.white)
                             .frame(width: 14, height: 14)
                     }
@@ -140,7 +140,7 @@ struct RoutePreviewView: View {
             HStack {
                 Label(String(format: "%.1f km", routeSummary.totalDistance), systemImage: "bicycle")
                 Spacer()
-                Label("ETA \(routeSummary.etaString)", systemImage: "clock")
+                Label(L10n.format("ETA %@", routeSummary.etaString), systemImage: "clock")
             }
             .font(.footnote)
             .foregroundStyle(Color.citrusSecondaryText)

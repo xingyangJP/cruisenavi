@@ -16,7 +16,7 @@ struct SeaMapView: View {
     var body: some View {
         Map(position: $cameraPosition) {
             if let coordinate = locationService.currentLocation?.coordinate {
-                Annotation("現在地", coordinate: coordinate) {
+                Annotation(L10n.tr("現在地"), coordinate: coordinate) {
                     ZStack {
                         Circle()
                             .fill(Color.aquaTeal.opacity(0.25))
@@ -24,7 +24,7 @@ struct SeaMapView: View {
                         Image(systemName: "bicycle")
                             .foregroundColor(.white)
                     }
-                    .accessibilityLabel("現在位置")
+                    .accessibilityLabel(L10n.tr("現在位置"))
                 }
             }
 

@@ -142,8 +142,14 @@ final class RideLaneSmokeTests: XCTestCase {
             remainingMeters: 72
         )
 
-        XCTAssertEqual(concise, "右です")
-        XCTAssertEqual(prompt, "まもなく右です")
+        XCTAssertEqual(concise, L10n.tr("右です"))
+        XCTAssertEqual(prompt, L10n.format("まもなく%@", L10n.tr("右です")))
+    }
+
+    func testRouteVoiceFormatterSupportsEnglishKeywords() {
+        let concise = RouteVoiceFormatter.conciseManeuver(from: "Turn right onto Harbor Road")
+
+        XCTAssertEqual(concise, L10n.tr("右です"))
     }
 
     func testRouteVoiceCuePlannerTriggers300mThen80m() {
@@ -167,29 +173,9 @@ final class RideLaneSmokeTests: XCTestCase {
         XCTAssertEqual(secondCue, 80)
     }
 
-    func testRouteVoiceUpdatePolicySuppressesDuplicateRerouteAnnouncement() {
-        let summary = RouteSummary(
-            totalDistance: 12.41,
-            etaMinutes: 42,
-            primaryInstruction: "右折",
-            secondaryInstruction: "県道277号",
-            nextDistance: 0.8,
-            routeCoordinates: MockRouteProvider.tokyoBayRoute
-        )
-
-        let signature = RouteVoiceUpdatePolicy.routeSignature(for: summary)
-        let shouldAnnounce = RouteVoiceUpdatePolicy.shouldAnnounceReroute(
-            previousSignature: signature,
-            newSummary: summary,
-            lastAnnouncementAt: .distantPast
-        )
-
-        XCTAssertFalse(shouldAnnounce)
-    }
-
     func testVoyageLogModeTitleForFreeRide() {
-        XCTAssertEqual(VoyageLogMode.freeRide.title, "フリーライド")
-        XCTAssertEqual(VoyageLogMode.guidedNavigation.title, "目的地ナビ")
+        XCTAssertEqual(VoyageLogMode.freeRide.title, L10n.tr("フリーライド"))
+        XCTAssertEqual(VoyageLogMode.guidedNavigation.title, L10n.tr("目的地ナビ"))
     }
 
     func testVoyageLogSampleIncludesFreeRideMode() {

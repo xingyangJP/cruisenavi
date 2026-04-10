@@ -21,47 +21,47 @@ struct NavigationDashboardView: View {
         .init(
             id: 0,
             icon: "location.fill",
-            title: "現在地を有効化",
-            description: "現在地から安全な自転車ルートを案内するため、位置情報を有効化してください。",
-            primaryActionTitle: "位置情報を有効化",
-            secondaryActionTitle: "次へ",
-            highlights: ["位置情報ONで現在地に追従", "ルート精度が向上"]
+            title: L10n.tr("現在地を有効化"),
+            description: L10n.tr("現在地から安全な自転車ルートを案内するため、位置情報を有効化してください。"),
+            primaryActionTitle: L10n.tr("位置情報を有効化"),
+            secondaryActionTitle: L10n.tr("次へ"),
+            highlights: [L10n.tr("位置情報ONで現在地に追従"), L10n.tr("ルート精度が向上")]
         ),
         .init(
             id: 1,
             icon: "sparkles",
-            title: "ホームの見方",
-            description: "上から、現在地地図・ナビ開始・天気・ライドログの順で確認できます。",
-            primaryActionTitle: "次へ",
+            title: L10n.tr("ホームの見方"),
+            description: L10n.tr("上から、現在地地図・ナビ開始・天気・ライドログの順で確認できます。"),
+            primaryActionTitle: L10n.tr("次へ"),
             secondaryActionTitle: nil,
-            highlights: ["今日の1本を1タップで開始", "天気と風を確認して出発"]
+            highlights: [L10n.tr("今日の1本を1タップで開始"), L10n.tr("天気と風を確認して出発")]
         ),
         .init(
             id: 2,
             icon: "figure.outdoor.cycle",
-            title: "まず1本走ってみる",
-            description: "「目的地を設定してナビ開始」からスポットを選ぶと、すぐにルートを作成できます。",
-            primaryActionTitle: "次へ",
-            secondaryActionTitle: "目的地を開く",
-            highlights: ["平坦優先/ヒルクライムを選択", "プレビュー後すぐナビ開始"]
+            title: L10n.tr("まず1本走ってみる"),
+            description: L10n.tr("「目的地を設定してナビ開始」からスポットを選ぶと、すぐにルートを作成できます。"),
+            primaryActionTitle: L10n.tr("次へ"),
+            secondaryActionTitle: L10n.tr("目的地を開く"),
+            highlights: [L10n.tr("平坦優先/ヒルクライムを選択"), L10n.tr("プレビュー後すぐナビ開始")]
         ),
         .init(
             id: 3,
             icon: "target",
-            title: "週次ミッション",
-            description: "今週40kmの進捗を毎日起動して確認できます。達成を目標に継続しましょう。",
-            primaryActionTitle: "次へ",
+            title: L10n.tr("週次ミッション"),
+            description: L10n.tr("今週40kmの進捗を毎日起動して確認できます。達成を目標に継続しましょう。"),
+            primaryActionTitle: L10n.tr("次へ"),
             secondaryActionTitle: nil,
-            highlights: ["進捗バーで残り距離を可視化", "毎日開く理由を固定"]
+            highlights: [L10n.tr("進捗バーで残り距離を可視化"), L10n.tr("毎日開く理由を固定")]
         ),
         .init(
             id: 4,
             icon: "gift.fill",
-            title: "ライド完了リワード",
-            description: "終了時にハイライトカードを表示。自己最長更新やミッション達成を確認できます。",
-            primaryActionTitle: "はじめる",
+            title: L10n.tr("ライド完了リワード"),
+            description: L10n.tr("終了時にハイライトカードを表示。自己最長更新やミッション達成を確認できます。"),
+            primaryActionTitle: L10n.tr("はじめる"),
             secondaryActionTitle: nil,
-            highlights: ["距離・平均速度を即確認", "次のライドへ自然に接続"]
+            highlights: [L10n.tr("距離・平均速度を即確認"), L10n.tr("次のライドへ自然に接続")]
         )
     ]
 
@@ -339,7 +339,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.95"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.96"
         return "ver\(version)"
     }
 
@@ -482,8 +482,8 @@ private struct WeeklyMissionCard: View {
                     .tint(mission.isCompleted ? .green : .citrusAmber)
                 Text(
                     mission.isCompleted
-                    ? "達成済み \(String(format: "%.1f", mission.currentKm))km"
-                    : "残り \(String(format: "%.1f", mission.remainingKm))km"
+                    ? L10n.format("達成済み %.1fkm", mission.currentKm)
+                    : L10n.format("残り %.1fkm", mission.remainingKm)
                 )
                 .font(.subheadline)
                 .foregroundStyle(Color.citrusSecondaryText)
@@ -588,8 +588,8 @@ private enum LegalDocumentPage: String, Identifiable {
 
     var title: String {
         switch self {
-        case .terms: return "利用規約"
-        case .privacy: return "プライバシーポリシー"
+        case .terms: return L10n.tr("利用規約")
+        case .privacy: return L10n.tr("プライバシーポリシー")
         }
     }
 
@@ -624,23 +624,23 @@ private final class LegalDocumentViewModel: ObservableObject {
         guard !didLoad else { return }
         didLoad = true
         cachedHTML = cacheStore.loadCachedHTML(for: document)
-        statusMessage = cachedHTML == nil ? "読み込み中..." : "最新情報を読み込み中（オフライン対応あり）"
+        statusMessage = cachedHTML == nil ? L10n.tr("読み込み中...") : L10n.tr("最新情報を読み込み中（オフライン対応あり）")
     }
 
     func handleRemoteLoaded(html: String) {
         cacheStore.saveCachedHTML(html, for: document)
         cachedHTML = html
-        statusMessage = "最新情報を更新済み"
+        statusMessage = L10n.tr("最新情報を更新済み")
     }
 
     func handleFallbackShown() {
-        statusMessage = "ネットワーク未接続のためキャッシュを表示中"
+        statusMessage = L10n.tr("ネットワーク未接続のためキャッシュを表示中")
     }
 
     func fallbackHTML() -> String {
         cachedHTML ?? cacheStore.errorHTML(
             title: document.title,
-            message: "ネットワーク接続がないため表示できません。オンライン時に一度開くと、次回以降オフラインでも表示できます。"
+            message: L10n.tr("ネットワーク接続がないため表示できません。オンライン時に一度開くと、次回以降オフラインでも表示できます。")
         )
     }
 }

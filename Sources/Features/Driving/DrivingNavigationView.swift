@@ -26,20 +26,20 @@ enum RouteVoiceFormatter {
     static func conciseManeuver(from instruction: String) -> String {
         let normalized = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         if normalized.isEmpty {
-            return "そのまま進んでください"
+            return L10n.tr("そのまま進んでください")
         }
 
-        if containsAny(["右折", "右へ", "斜め右", "右方向"], in: normalized) {
-            return "右です"
+        if containsAny(["右折", "右へ", "斜め右", "右方向", "turn right", "keep right", "slight right"], in: normalized) {
+            return L10n.tr("右です")
         }
-        if containsAny(["左折", "左へ", "斜め左", "左方向"], in: normalized) {
-            return "左です"
+        if containsAny(["左折", "左へ", "斜め左", "左方向", "turn left", "keep left", "slight left"], in: normalized) {
+            return L10n.tr("左です")
         }
-        if containsAny(["直進", "まっすぐ"], in: normalized) {
-            return "そのまま直進です"
+        if containsAny(["直進", "まっすぐ", "continue", "go straight", "head"], in: normalized) {
+            return L10n.tr("そのまま直進です")
         }
-        if containsAny(["uターン", "Uターン", "転回"], in: normalized) {
-            return "Uターンです"
+        if containsAny(["uターン", "Uターン", "転回", "u-turn"], in: normalized) {
+            return L10n.tr("Uターンです")
         }
 
         return normalized
@@ -51,32 +51,28 @@ enum RouteVoiceFormatter {
         let maneuver = conciseManeuver(from: primaryInstruction)
         let detail = secondaryInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
         if detail.isEmpty {
-            return "音声ナビを開始します。\(maneuver)"
+            return L10n.format("音声ナビを開始します。%@", maneuver)
         }
-        return "音声ナビを開始します。\(maneuver)。\(detail)方面です"
-    }
-
-    static func reroutePrompt(primaryInstruction: String) -> String {
-        "ルートを更新しました。\(conciseManeuver(from: primaryInstruction))"
+        return L10n.format("音声ナビを開始します。%@。%@方面です", maneuver, detail)
     }
 
     static func turnPrompt(primaryInstruction: String, remainingMeters: Int) -> String {
         let maneuver = conciseManeuver(from: primaryInstruction)
         if remainingMeters <= 90 {
-            return "まもなく\(maneuver)"
+            return L10n.format("まもなく%@", maneuver)
         }
         let roundedMeters = max((remainingMeters / 10) * 10, 20)
-        return "\(roundedMeters)メートル先、\(maneuver)"
+        return L10n.format("%dメートル先、%@", roundedMeters, maneuver)
     }
 
     static func hazardPrompt(_ alert: RouteHazardAlert) -> String {
         switch alert.kind {
         case .sharpTurn:
-            return "危険です。前方急カーブです。減速してください"
+            return L10n.tr("危険です。前方急カーブです。減速してください")
         case .wetRoad:
-            return "危険です。路面悪化に注意してください"
+            return L10n.tr("危険です。路面悪化に注意してください")
         case .nightVisibility:
-            return "危険です。夜間走行です。ライトを確認してください"
+            return L10n.tr("危険です。夜間走行です。ライトを確認してください")
         }
     }
 
@@ -120,35 +116,8 @@ enum RouteVoiceCuePlanner {
     }
 }
 
-enum RouteVoiceUpdatePolicy {
-    static func routeSignature(for summary: RouteSummary) -> String {
-        let roundedTotal = Int((summary.totalDistance * 10).rounded())
-        let roundedNext = Int((summary.nextDistance * 10).rounded())
-        let routeCount = summary.routeCoordinates?.count ?? 0
-        return [
-            RouteVoiceFormatter.conciseManeuver(from: summary.primaryInstruction),
-            summary.secondaryInstruction,
-            "\(roundedTotal)",
-            "\(roundedNext)",
-            "\(routeCount)"
-        ].joined(separator: "|")
-    }
-
-    static func shouldAnnounceReroute(
-        previousSignature: String?,
-        newSummary: RouteSummary,
-        lastAnnouncementAt: Date,
-        now: Date = Date()
-    ) -> Bool {
-        let newSignature = routeSignature(for: newSummary)
-        guard let previousSignature else { return false }
-        guard previousSignature != newSignature else { return false }
-        return now.timeIntervalSince(lastAnnouncementAt) >= 12
-    }
-}
-
 @MainActor
-final class VoiceGuidanceController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+final class VoiceGuidanceController: NSObject, ObservableObject, @preconcurrency AVSpeechSynthesizerDelegate {
     enum Priority {
         case normal
         case high
@@ -179,7 +148,8 @@ final class VoiceGuidanceController: NSObject, ObservableObject, AVSpeechSynthes
         }
 
         let utterance = AVSpeechUtterance(string: trimmed)
-        utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+        utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.current.speechVoiceIdentifier)
+            ?? AVSpeechSynthesisVoice(language: "en-US")
         utterance.rate = 0.5
         utterance.pitchMultiplier = 1.0
         utterance.preUtteranceDelay = 0.05
@@ -296,8 +266,8 @@ enum RouteHazardEvaluator {
         if speedKmh >= 14, (weather.warning == .warning || weather.roadRisk >= 1.2) {
             return RouteHazardAlert(
                 kind: .wetRoad,
-                title: "路面悪化注意",
-                message: "雨/強風の影響あり。速度を落として走行してください",
+                title: L10n.tr("路面悪化注意"),
+                message: L10n.tr("雨/強風の影響あり。速度を落として走行してください"),
                 signature: "wetRoad-\(weather.warning.rawValue)"
             )
         }
@@ -305,8 +275,8 @@ enum RouteHazardEvaluator {
         if speedKmh >= 18, isNightTime(now: now) {
             return RouteHazardAlert(
                 kind: .nightVisibility,
-                title: "夜間注意",
-                message: "視認性が低い時間帯です。ライト点灯で減速走行してください",
+                title: L10n.tr("夜間注意"),
+                message: L10n.tr("視認性が低い時間帯です。ライト点灯で減速走行してください"),
                 signature: "nightVisibility"
             )
         }
@@ -341,8 +311,8 @@ enum RouteHazardEvaluator {
                 let meters = max(Int(traversedDistance.rounded()), 20)
                 return RouteHazardAlert(
                     kind: .sharpTurn,
-                    title: "前方急カーブ注意",
-                    message: "約\(meters)m先で進行方向が大きく変わります。減速してください",
+                    title: L10n.tr("前方急カーブ注意"),
+                    message: L10n.format("約%dm先で進行方向が大きく変わります。減速してください", meters),
                     signature: "sharpTurn-\(currentIndex)"
                 )
             }
@@ -408,8 +378,6 @@ struct DrivingNavigationView: View {
     @State private var lastHazardSignature: String?
     @State private var spokenTurnMilestones = Set<Int>()
     @State private var hasSpokenStartGuidance = false
-    @State private var lastRouteVoiceSignature: String?
-    @State private var lastRouteVoiceAnnouncementAt = Date.distantPast
     @StateObject private var voiceGuidance = VoiceGuidanceController()
 
     init(
@@ -466,8 +434,6 @@ struct DrivingNavigationView: View {
                 startHydrationTimer()
                 if isFreeRide {
                     syncFreeRideProgress()
-                } else {
-                    lastRouteVoiceSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
                 }
                 speakStartGuidanceIfNeeded()
                 if !isFreeRide {
@@ -593,21 +559,6 @@ struct DrivingNavigationView: View {
         guard !isFreeRide else { return }
         spokenTurnMilestones.removeAll()
         hasSpokenStartGuidance = false
-        let shouldAnnounce = RouteVoiceUpdatePolicy.shouldAnnounceReroute(
-            previousSignature: lastRouteVoiceSignature,
-            newSummary: routeSummary,
-            lastAnnouncementAt: lastRouteVoiceAnnouncementAt
-        )
-        let newSignature = RouteVoiceUpdatePolicy.routeSignature(for: routeSummary)
-        lastRouteVoiceSignature = newSignature
-        if shouldAnnounce {
-            lastRouteVoiceAnnouncementAt = Date()
-            voiceGuidance.speak(
-                RouteVoiceFormatter.reroutePrompt(primaryInstruction: routeSummary.primaryInstruction),
-                priority: .high
-            )
-        }
-        hasSpokenStartGuidance = true
     }
 
     private func updateRemainingRoute(with location: CLLocation) {
@@ -642,11 +593,11 @@ struct DrivingNavigationView: View {
         guard isArrived else { return }
 
         hasShownArrivalMessage = true
-        arrivalMessage = arrivalMessages.randomElement() ?? "目的地に到着しました。おつかれさまでした。"
+        arrivalMessage = arrivalMessages.randomElement() ?? L10n.tr("目的地に到着しました。おつかれさまでした。")
         withAnimation(.spring(duration: 0.4)) {
             showArrivalMessage = true
         }
-        voiceGuidance.speak(arrivalMessage ?? "目的地に到着しました", priority: .high)
+        voiceGuidance.speak(arrivalMessage ?? L10n.tr("目的地に到着しました"), priority: .high)
         let feedback = UINotificationFeedbackGenerator()
         feedback.notificationOccurred(.success)
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
@@ -667,10 +618,10 @@ struct DrivingNavigationView: View {
 
     private var arrivalMessages: [String] {
         [
-            "目的地に到着しました。最高のライドでした。",
-            "ナビ完了です。ここからはゆっくり休憩しましょう。",
-            "到着しました。今日の一本、いい走りです。",
-            "ゴールです。安全運転ありがとうございました。"
+            L10n.tr("目的地に到着しました。最高のライドでした。"),
+            L10n.tr("ナビ完了です。ここからはゆっくり休憩しましょう。"),
+            L10n.tr("到着しました。今日の一本、いい走りです。"),
+            L10n.tr("ゴールです。安全運転ありがとうございました。")
         ]
     }
 
@@ -766,7 +717,7 @@ struct DrivingNavigationView: View {
         hasSpokenStartGuidance = true
         let prompt: String
         if isFreeRide {
-            prompt = "フリーライドを開始します。自動で記録します"
+            prompt = L10n.tr("フリーライドを開始します。自動で記録します")
         } else {
             guard routeSummary.routeCoordinates?.isEmpty == false else { return }
             prompt = RouteVoiceFormatter.startPrompt(
@@ -876,7 +827,7 @@ struct DrivingNavigationView: View {
 
         hydrationIntervalMinutes = min(max(interval, 8), 35)
         let caloriesPerHour = estimateCaloriesPerHour(speedKmh: max(speed, 8))
-        hydrationReminderText = "\(hydrationIntervalMinutes)分ごとに給水 / 約\(caloriesPerHour)kcal/h"
+        hydrationReminderText = L10n.format("%d分ごとに給水 / 約%dkcal/h", hydrationIntervalMinutes, caloriesPerHour)
     }
 
     private func checkHydrationReminder() {
@@ -994,7 +945,7 @@ private struct DrivingInstructionCard: View {
                     Text("自動記録中")
                         .font(.footnote.bold())
                 } else {
-                    Label("ETA \(route.etaString)", systemImage: "clock")
+                    Label(L10n.format("ETA %@", route.etaString), systemImage: "clock")
                     Spacer()
                     Button("目的地再設定", action: onChange)
                         .font(.footnote.bold())
@@ -1017,9 +968,9 @@ private struct DrivingInstructionCard: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         if hours > 0 {
-            return "\(hours)時間\(minutes)分"
+            return L10n.format("%d時間%d分", hours, minutes)
         }
-        return "\(minutes)分"
+        return L10n.format("%d分", minutes)
     }
 }
 

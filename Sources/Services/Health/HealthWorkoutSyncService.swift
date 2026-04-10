@@ -18,7 +18,7 @@ final class HealthWorkoutSyncService: RideLogSyncService {
 
     func syncRideLog(_ log: VoyageLog) async -> RideLogSyncResult {
         guard HKHealthStore.isHealthDataAvailable() else {
-            return .skipped("Health未対応")
+            return .skipped(L10n.tr("Health未対応"))
         }
 
         do {
@@ -55,7 +55,13 @@ final class HealthWorkoutSyncService: RideLogSyncService {
                 if success {
                     continuation.resume(returning: ())
                 } else {
-                    continuation.resume(throwing: NSError(domain: "HealthKit", code: 1, userInfo: [NSLocalizedDescriptionKey: "HealthKit authorization denied"]))
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "HealthKit",
+                            code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: L10n.tr("HealthKit authorization denied")]
+                        )
+                    )
                 }
             }
         }
@@ -89,7 +95,13 @@ final class HealthWorkoutSyncService: RideLogSyncService {
                 if success {
                     continuation.resume(returning: ())
                 } else {
-                    continuation.resume(throwing: NSError(domain: "HealthKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Workout save failed"]))
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "HealthKit",
+                            code: 2,
+                            userInfo: [NSLocalizedDescriptionKey: L10n.tr("Workout save failed")]
+                        )
+                    )
                 }
             }
         }
@@ -111,7 +123,13 @@ final class HealthWorkoutSyncService: RideLogSyncService {
                 if success {
                     continuation.resume(returning: ())
                 } else {
-                    continuation.resume(throwing: NSError(domain: "HealthKit", code: 3, userInfo: [NSLocalizedDescriptionKey: "Route insert failed"]))
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "HealthKit",
+                            code: 3,
+                            userInfo: [NSLocalizedDescriptionKey: L10n.tr("Route insert failed")]
+                        )
+                    )
                 }
             }
         }
@@ -151,6 +169,6 @@ final class HealthWorkoutSyncService: RideLogSyncService {
 
 struct NoopRideLogSyncService: RideLogSyncService {
     func syncRideLog(_ log: VoyageLog) async -> RideLogSyncResult {
-        .skipped("同期無効")
+        .skipped(L10n.tr("同期無効"))
     }
 }

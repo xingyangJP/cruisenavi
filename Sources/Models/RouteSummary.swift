@@ -13,9 +13,9 @@ struct RouteSummary {
         let hours = etaMinutes / 60
         let minutes = etaMinutes % 60
         if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            return L10n.format("%d時間%d分", hours, minutes)
         } else {
-            return "\(minutes)m"
+            return L10n.format("%d分", minutes)
         }
     }
 

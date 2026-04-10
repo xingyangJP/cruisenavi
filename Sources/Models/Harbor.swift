@@ -105,7 +105,7 @@ extension Harbor {
         let distanceKm = distanceMeters / 1000.0
         let eta = max(Int(distanceMeters / (18.0 / 3.6) / 60), 5)
         self.init(
-            name: mapItem.name ?? "未命名のスポット",
+            name: mapItem.name ?? L10n.tr("未命名のスポット"),
             coordinate: coordinate,
             facilities: ["スポット"] ,
             restrictions: [],

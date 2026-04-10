@@ -12,12 +12,16 @@ struct LogbookListView: View {
         var title: String {
             switch self {
             case .day:
-                return "直近24時間"
+                return L10n.tr("直近24時間")
             case .week:
-                return "直近7日"
+                return L10n.tr("直近7日")
             case .month:
-                return "直近30日"
+                return L10n.tr("直近30日")
             }
+        }
+
+        var shortLabel: String {
+            L10n.tr(rawValue)
         }
     }
 
@@ -68,7 +72,7 @@ struct LogbookListView: View {
                     Spacer()
                     Picker("期間", selection: $scope) {
                         ForEach(PeriodScope.allCases) { option in
-                            Text(option.rawValue).tag(option)
+                            Text(option.shortLabel).tag(option)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -79,7 +83,7 @@ struct LogbookListView: View {
                     .foregroundStyle(Color.citrusSecondaryText)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                    StatTile(title: "ライド回数", value: "\(filteredLogs.count) 回")
+                    StatTile(title: "ライド回数", value: L10n.format("%d 回", filteredLogs.count))
                     StatTile(title: "総距離", value: String(format: "%.1f km", totalDistance))
                     StatTile(title: "総時間", value: durationString(totalDuration))
                     StatTile(title: "平均時速", value: String(format: "%.1f km/h", averageSpeed))
@@ -141,9 +145,9 @@ struct LogbookListView: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         if hours > 0 {
-            return "\(hours)時間\(minutes)分"
+            return L10n.format("%d時間%d分", hours, minutes)
         }
-        return "\(minutes)分"
+        return L10n.format("%d分", minutes)
     }
 
     private func statusColor(_ status: NavigationDashboardViewModel.RideLogHealthStatus) -> Color {
@@ -195,27 +199,27 @@ private struct LogbookDetailSheet: View {
         let rideType: String = {
             switch log.distance {
             case ..<10:
-                return "ショート"
+                return L10n.tr("ショート")
             case ..<30:
-                return "ミドル"
+                return L10n.tr("ミドル")
             default:
-                return "ロング"
+                return L10n.tr("ロング")
             }
         }()
 
-        let title = "今日のライドストーリー"
-        let subtitle = "\(log.mode.title) / \(rideType)ライド \(String(format: "%.1fkm", log.distance))・平均\(String(format: "%.1fkm/h", log.averageSpeed))"
+        let title = L10n.tr("今日のライドストーリー")
+        let subtitle = L10n.format("%@ / %@ライド %.1fkm・平均%.1fkm/h", log.mode.title, rideType, log.distance, log.averageSpeed)
         let highlights = [
-            "モード \(log.mode.title)",
-            "走行時間 \(durationString(log.duration))",
-            "天候 \(log.weatherSummary)",
-            "ルート点 \(log.routePoints.count)"
+            L10n.format("モード %@", log.mode.title),
+            L10n.format("走行時間 %@", durationString(log.duration)),
+            L10n.format("天候 %@", log.weatherSummary),
+            L10n.format("ルート点 %d", log.routePoints.count)
         ]
         let shareText = [
-            "RideLane ライドストーリー",
+            L10n.tr("RideLane ライドストーリー"),
             log.startTime.formatted(date: .abbreviated, time: .shortened),
             subtitle,
-            "天候: \(log.weatherSummary)"
+            L10n.format("天候: %@", log.weatherSummary)
         ].joined(separator: "\n")
         return RideStory(title: title, subtitle: subtitle, highlights: highlights, shareText: shareText)
     }
@@ -243,7 +247,7 @@ private struct LogbookDetailSheet: View {
                     }
 
                     if let status = healthStatus {
-                        Text("Health: \(status.text)")
+                        Text(L10n.format("Health: %@", status.text))
                             .font(.footnote)
                             .foregroundStyle(Color.citrusSecondaryText)
                     }
@@ -293,9 +297,9 @@ private struct LogbookDetailSheet: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         if hours > 0 {
-            return "\(hours)時間\(minutes)分"
+            return L10n.format("%d時間%d分", hours, minutes)
         }
-        return "\(minutes)分"
+        return L10n.format("%d分", minutes)
     }
 
     @ViewBuilder

@@ -8,9 +8,9 @@ enum VoyageLogMode: String, Codable {
     var title: String {
         switch self {
         case .guidedNavigation:
-            return "目的地ナビ"
+            return L10n.tr("目的地ナビ")
         case .freeRide:
-            return "フリーライド"
+            return L10n.tr("フリーライド")
         }
     }
 }
@@ -37,7 +37,7 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 18.4,
             averageSpeed: 12.3,
-            weatherSummary: "晴れ / 北東 12km/h",
+            weatherSummary: L10n.format("%@ / %@ %.0fkm/h", L10n.localizedWeatherCondition("晴れ"), L10n.localizedWindCompass("NE"), 12.0),
             mode: .guidedNavigation
         ),
         VoyageLog(
@@ -47,7 +47,7 @@ struct VoyageLog: Identifiable {
             routePoints: [],
             distance: 5.2,
             averageSpeed: 7.1,
-            weatherSummary: "くもり / 南西 8km/h",
+            weatherSummary: L10n.format("%@ / %@ %.0fkm/h", L10n.localizedWeatherCondition("くもり"), L10n.localizedWindCompass("SW"), 8.0),
             mode: .freeRide
         )
     ]

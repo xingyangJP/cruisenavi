@@ -12,18 +12,18 @@ enum CyclingRouteMode: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .flat:
-            return "平坦優先"
+            return L10n.tr("平坦優先")
         case .hillClimb:
-            return "ヒルクライム"
+            return L10n.tr("ヒルクライム")
         }
     }
 
     var description: String {
         switch self {
         case .flat:
-            return "獲得標高を抑えた走りやすいルートを優先"
+            return L10n.tr("獲得標高を抑えた走りやすいルートを優先")
         case .hillClimb:
-            return "トレーニング向けに登り寄りのルートを優先"
+            return L10n.tr("トレーニング向けに登り寄りのルートを優先")
         }
     }
 }
@@ -32,9 +32,9 @@ struct RainAvoidanceAlert: Equatable {
     let minutesUntilRain: Int
     let createdAt: Date
 
-    var title: String { "雨回避アラート" }
+    var title: String { L10n.tr("雨回避アラート") }
     var message: String {
-        "\(minutesUntilRain)分後にルート上で降雨予測。回避ルートを提案できます"
+        L10n.format("%d分後にルート上で降雨予測。回避ルートを提案できます", minutesUntilRain)
     }
 }
 
@@ -96,13 +96,13 @@ final class NavigationDashboardViewModel: ObservableObject {
         var text: String {
             switch self {
             case .syncing:
-                return "同期中..."
+                return L10n.tr("同期中...")
             case .synced:
-                return "Health同期済み"
+                return L10n.tr("Health同期済み")
             case .skipped(let reason):
                 return reason
             case .failed(let reason):
-                return "同期失敗: \(reason)"
+                return L10n.format("同期失敗: %@", reason)
             }
         }
     }
@@ -118,7 +118,7 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var selectedRouteMode: CyclingRouteMode = .flat
     @Published var rainAvoidanceAlert: RainAvoidanceAlert?
     @Published var todayRideSuggestion: TodayRideSuggestion?
-    @Published var weeklyMission: WeeklyMissionProgress = .init(title: "今週40km", targetKm: 40, currentKm: 0)
+    @Published var weeklyMission: WeeklyMissionProgress = .init(title: L10n.format("今週%.0fkm", 40.0), targetKm: 40, currentKm: 0)
     @Published var latestRideReward: RideCompletionReward?
     @Published var restSpotSuggestion: RestSpotSuggestion?
     @Published var healthSyncEnabled: Bool
@@ -215,8 +215,8 @@ final class NavigationDashboardViewModel: ObservableObject {
         routeSummary = RouteSummary(
             totalDistance: 0,
             etaMinutes: 0,
-            primaryInstruction: "フリーライド中",
-            secondaryInstruction: "自動で距離・時間・ルートを記録しています",
+            primaryInstruction: L10n.tr("フリーライド中"),
+            secondaryInstruction: L10n.tr("自動で距離・時間・ルートを記録しています"),
             nextDistance: 0,
             routeCoordinates: nil
         )
@@ -307,7 +307,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             lastWeatherCoordinate = coordinate
             lastWeatherRefreshAt = now
             if warningMessage == nil {
-                warningMessage = snapshot.warning == .warning ? "強風注意" : nil
+                warningMessage = snapshot.warning == .warning ? L10n.tr("強風注意") : nil
             }
 #if DEBUG
             print(
@@ -323,7 +323,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             recalculateGrowthWidgets()
         } catch {
             if warningMessage == nil {
-                warningMessage = "気象データ更新に失敗"
+                warningMessage = L10n.tr("気象データ更新に失敗")
             }
 #if DEBUG
             print(
@@ -369,7 +369,7 @@ final class NavigationDashboardViewModel: ObservableObject {
                 #if DEBUG
                 print("Reroute completed.")
                 #endif
-                warningMessage = computation.usedSnappedDestination ? "目的地を最寄り道路に補正して案内中" : nil
+                warningMessage = computation.usedSnappedDestination ? L10n.tr("目的地を最寄り道路に補正して案内中") : nil
                 isGeneratingRoute = false
             }
             await refreshRainAvoidanceAlert(force: true)
@@ -382,7 +382,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         let distanceMeters = routeDistance(fallbackRoute)
         if distanceMeters > 300 {
             await MainActor.run {
-                warningMessage = "道路ルート取得失敗: \(computation.failureReason)"
+                warningMessage = L10n.format("道路ルート取得失敗: %@", computation.failureReason)
                 pendingRoute = nil
                 rainAvoidanceAlert = nil
                 isGeneratingRoute = false
@@ -400,7 +400,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             let summary = RouteSummary(
                 totalDistance: distanceMeters / 1000.0,
                 etaMinutes: max(etaMinutes, harbor.etaMinutes),
-                primaryInstruction: "推奨ルートを進む",
+                primaryInstruction: L10n.tr("推奨ルートを進む"),
                 secondaryInstruction: harbor.name,
                 nextDistance: distanceMeters / 1000.0,
                 routeCoordinates: fallbackRoute
@@ -413,7 +413,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             #if DEBUG
             print("Reroute completed with short fallback route.")
             #endif
-            warningMessage = "近距離直線補助: \(computation.failureReason)"
+            warningMessage = L10n.format("近距離直線補助: %@", computation.failureReason)
             isGeneratingRoute = false
         }
         await refreshRainAvoidanceAlert(force: true)
@@ -596,9 +596,9 @@ final class NavigationDashboardViewModel: ObservableObject {
         let distanceMeters = routeDistance(resolvedRoute)
         let duration = max(endTime.timeIntervalSince(startTime), 1)
         let averageSpeedKmh = (distanceMeters / duration) * 3.6
-        let weatherSummary = String(
-            format: "風 %@ %.0fkm/h / 路面リスク %.1f",
-            weatherSnapshot.windCompass,
+        let weatherSummary = L10n.format(
+            "風 %@ %.0fkm/h / 路面リスク %.1f",
+            L10n.localizedWindCompass(weatherSnapshot.windCompass),
             weatherSnapshot.windSpeed * 3.6,
             weatherSnapshot.roadRisk
         )
@@ -635,7 +635,7 @@ final class NavigationDashboardViewModel: ObservableObject {
                 }
             }
         } else {
-            rideLogHealthStatuses[newLog.id] = .skipped("Health連携オフ")
+            rideLogHealthStatuses[newLog.id] = .skipped(L10n.tr("Health連携オフ"))
         }
 
         activeRideStartTime = nil
@@ -711,7 +711,7 @@ final class NavigationDashboardViewModel: ObservableObject {
             .filter { $0.startTime >= startOfWeek && $0.startTime <= now }
             .reduce(0) { $0 + $1.distance }
         return WeeklyMissionProgress(
-            title: "今週40km",
+            title: L10n.format("今週%.0fkm", 40.0),
             targetKm: 40,
             currentKm: currentKm
         )
@@ -735,10 +735,15 @@ final class NavigationDashboardViewModel: ObservableObject {
         }
 
         guard let harbor = candidate else { return nil }
-        let subtitle = "約\(String(format: "%.1f", harbor.distance))km・ETA\(harbor.etaMinutes)分 / \(weatherSnapshot.condition)"
+        let subtitle = L10n.format(
+            "約%.1fkm・ETA%d分 / %@",
+            harbor.distance,
+            harbor.etaMinutes,
+            L10n.localizedWeatherCondition(weatherSnapshot.condition)
+        )
         return TodayRideSuggestion(
             harbor: harbor,
-            title: "今日の1本: \(harbor.name)",
+            title: L10n.format("今日の1本: %@", harbor.name),
             subtitle: subtitle
         )
     }
@@ -775,17 +780,12 @@ final class NavigationDashboardViewModel: ObservableObject {
 
         let title: String
         if shouldRestNow {
-            title = "休憩スポット提案"
+            title = L10n.tr("休憩スポット提案")
         } else {
-            title = String(format: "あと%.1fkmで休憩推奨", remainingKm)
+            title = L10n.format("あと%.1fkmで休憩推奨", remainingKm)
         }
 
-        let subtitle = String(
-            format: "%@ ・ 約%.1fkm（%d分）",
-            spot.name,
-            spot.distance,
-            spot.etaMinutes
-        )
+        let subtitle = L10n.format("%@ ・ 約%.1fkm（%d分）", spot.name, spot.distance, spot.etaMinutes)
 
         return RestSpotSuggestion(
             harbor: spot,
@@ -844,24 +844,24 @@ final class NavigationDashboardViewModel: ObservableObject {
     ) -> RideCompletionReward {
         var badges: [String] = []
         if newLog.distance >= 30 {
-            badges.append("ロングライド")
+            badges.append(L10n.tr("ロングライド"))
         } else if newLog.distance >= 15 {
-            badges.append("ミドルライド")
+            badges.append(L10n.tr("ミドルライド"))
         } else {
-            badges.append("ショートライド")
+            badges.append(L10n.tr("ショートライド"))
         }
         if newLog.distance > previousBestDistance {
-            badges.append("自己最長更新")
+            badges.append(L10n.tr("自己最長更新"))
         }
         let remaining = max(weeklyMission.targetKm - (weeklyMission.currentKm + newLog.distance), 0)
         if remaining <= 0 {
-            badges.append("週次ミッション達成")
+            badges.append(L10n.tr("週次ミッション達成"))
         } else {
-            badges.append("目標まで\(String(format: "%.1f", remaining))km")
+            badges.append(L10n.format("目標まで%.1fkm", remaining))
         }
         return RideCompletionReward(
-            title: newLog.mode == .freeRide ? "フリーライド完了おつかれさま" : "ライド完了おつかれさま",
-            subtitle: String(format: "%.1fkm / 平均%.1fkm/h", newLog.distance, newLog.averageSpeed),
+            title: newLog.mode == .freeRide ? L10n.tr("フリーライド完了おつかれさま") : L10n.tr("ライド完了おつかれさま"),
+            subtitle: L10n.format("%.1fkm / 平均%.1fkm/h", newLog.distance, newLog.averageSpeed),
             badges: badges
         )
     }
@@ -1050,8 +1050,8 @@ final class MapKitRoadRoutePlanner {
             }
         }
 
-        let reason = failureNotes.last ?? "経路候補なし"
-        let suffix = snapped.didSnap ? "（目的地道路補正済み）" : ""
+        let reason = failureNotes.last ?? L10n.tr("経路候補なし")
+        let suffix = snapped.didSnap ? L10n.tr("（目的地道路補正済み）") : ""
         return RoadRouteComputation(route: nil, failureReason: reason + suffix, usedSnappedDestination: snapped.didSnap)
     }
 
@@ -1071,7 +1071,7 @@ final class MapKitRoadRoutePlanner {
         do {
             let response = try await MKDirections(request: request).calculate()
             guard !response.routes.isEmpty else {
-                return (nil, "\(transportLabel(transportType)): ルート候補なし")
+                return (nil, L10n.format("%@: ルート候補なし", transportLabel(transportType)))
             }
 
             let validRoutes = response.routes.filter { route in
@@ -1079,20 +1079,20 @@ final class MapKitRoadRoutePlanner {
             }
 
             guard !validRoutes.isEmpty else {
-                return (nil, "\(transportLabel(transportType)): 階段を含むため除外")
+                return (nil, L10n.format("%@: 階段を含むため除外", transportLabel(transportType)))
             }
 
             let route = selectBestRoute(validRoutes, transportType: transportType, mode: routeMode)
             let rawCoords = route.polyline.coordinatePoints
             let coords = smoothRouteCoordinates(rawCoords)
             guard coords.count > 1 else {
-                return (nil, "\(transportLabel(transportType)): ポリライン不足")
+                return (nil, L10n.format("%@: ポリライン不足", transportLabel(transportType)))
             }
 
             let firstStep = route.steps.first {
                 !$0.instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
-            let primary = firstStep?.instructions.isEmpty == false ? firstStep!.instructions : "推奨ルートを進む"
+            let primary = firstStep?.instructions.isEmpty == false ? firstStep!.instructions : L10n.tr("推奨ルートを進む")
             let nextDistance = firstStep?.distance ?? min(route.distance, 300)
 
             return (
@@ -1143,11 +1143,11 @@ final class MapKitRoadRoutePlanner {
     private func transportLabel(_ type: MKDirectionsTransportType) -> String {
         switch type {
         case .walking:
-            return "徒歩"
+            return L10n.tr("徒歩")
         case .automobile:
-            return "自動車"
+            return L10n.tr("自動車")
         default:
-            return "その他"
+            return L10n.tr("その他")
         }
     }
 
@@ -1166,11 +1166,11 @@ final class MapKitRoadRoutePlanner {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet:
-                return "オフライン"
+                return L10n.tr("オフライン")
             case .timedOut:
-                return "タイムアウト"
+                return L10n.tr("タイムアウト")
             default:
-                return "通信エラー"
+                return L10n.tr("通信エラー")
             }
         }
 
@@ -1178,17 +1178,17 @@ final class MapKitRoadRoutePlanner {
         if ns.domain == MKError.errorDomain {
             switch MKError.Code(rawValue: UInt(ns.code)) {
             case .directionsNotFound:
-                return "方向案内対象外"
+                return L10n.tr("方向案内対象外")
             case .serverFailure:
-                return "地図サーバ障害"
+                return L10n.tr("地図サーバ障害")
             case .loadingThrottled:
-                return "地図API制限"
+                return L10n.tr("地図API制限")
             default:
-                return "MapKitエラー"
+                return L10n.tr("MapKitエラー")
             }
         }
 
-        return "不明なエラー"
+        return L10n.tr("不明なエラー")
     }
 
     private func smoothRouteCoordinates(_ coordinates: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
