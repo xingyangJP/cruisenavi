@@ -110,27 +110,29 @@ struct PersonalRankingBoard {
 }
 ```
 
-### 5.3 全世界ランキング（フェーズB・Firestore設計案）
+### 5.3 全世界ランキング（フェーズB・Firebase/Firestore 確定）
+**バックエンド方式＝Firebase/Firestore で確定。** 理由: 将来のAndroid展開を前提とするため。Game Center も検討したが **Apple専用でクロスプラットフォーム不可**（Androidユーザーが同一順位表に参加できない）ため不採用。Firebase は iOS/Android/Web 共通SDK、既存導入（`FirebaseCore`/`FirebaseAnalytics`）の増設で済み、ニックネーム・表示・地域/期間・不正対策を自前設計でき、Cloud Functions でサーバー側検証も可能。
+
 ```
 collection: leaderboards/{metric}/entries/{userId}
-  - userId (Sign in with Apple の安定ID)
-  - displayName        // 公開名（本名不可、任意）
+  - userId (Firebase Auth uid)
+  - displayName        // 公開名（非ユニーク・本名不可）
   - value              // ベスト距離 or ベスト速度
   - achievedAt
   - rideId
-  - verified: Bool     // サーバー検証済みフラグ（フェーズBで有効化）
+  - verified: Bool     // サーバー検証済みフラグ（§4.4）
   - country / region   // 任意（地域別ランキング用）
 ```
-- 認証: **Sign in with Apple 推奨**（匿名認証は詐称・多重登録に弱い）
+- 認証: **Firebase Auth に統合**。iOS = Sign in with Apple、Android = Google サインインを両プロバイダとして接続し、共通の `uid` をアカウントキーにする。
 - 送信は自己ベスト更新時のみ（コスト最小化）
-- 読み取りは Top100＋自分順位のクエリ
+- 読み取りは Top100＋自分順位のクエリ。ポーリングせずキャッシュ前提でコスト管理（§10）
 
 ### 5.4 アカウント識別とニックネーム（決定事項）
 一意性は2層に分離する。**重複を防ぐのはアカウントであってニックネームではない。**
 
 | 層 | 役割 | 一意性 | 実体 |
 |---|---|---|---|
-| アカウント識別子 | 本人を一意特定／多重登録・不正防止／端末間の順位引き継ぎ | **必ず一意** | Sign in with Apple の `userIdentifier`（Apple ID・端末IDは公開しない） |
+| アカウント識別子 | 本人を一意特定／多重登録・不正防止／端末間の順位引き継ぎ | **必ず一意** | Firebase Auth `uid`（iOS=Sign in with Apple / Android=Google。生のApple ID・端末IDは公開しない） |
 | ニックネーム | ランキング表示名 | **非ユニーク（決定）** | ユーザー入力の `displayName` |
 
 - **ニックネームは非ユニーク**方針で確定。同名を許容し、本人特定はアカウントIDで行う（Strava等と同方式）。予約システム・重複拒否UX・改名クールダウンは不要。
@@ -141,14 +143,19 @@ collection: leaderboards/{metric}/entries/{userId}
   - 「同一人物の多重エントリ」防止は**アカウント一意性で担保**（ニックネームではない）
 - Firestore スキーマ（§5.3）はこの方針で整合済み: `entries/{userId}` の1ドキュメント=1アカウント、`displayName` は非ユニーク属性。
 - ニックネーム登録UIは初回の世界ランキング参加時にオプトインで表示（未登録なら送信しない）。
+- **認証トリガー（決定）: Sign in with Apple は「世界ランキング参加時のみ」要求する。** アプリ全体のログイン壁にはしない（ナビ・フリーライド・自分ランキングは無認証のまま）。フロー: 世界ランキング参加 → Sign in with Apple（一意アカウント取得）→ ニックネーム登録（非ユニーク表示名）。
+- Apple要件: Sign in with Apple を採用する場合、アプリ内でのアカウント削除導線を提供する（審査 5.1.1(v)）。
+- 現状のクラウド保存: **なし（全データ端末内）。** 自分ランキングは端末ログから都度計算、世界ランキングはモック（通信ゼロ）。Firestore 保存はフェーズB go-live で初めて発生し、公開するのは `accountId`/`displayName`/`value`/`achievedAt`/`region` のみ（GPS軌跡は非公開）。
 
-### 5.5 フェーズB 実装の外部依存（着手前に必要な判断）
-クライアント実装は `WorldRankingService` プロトコル＋モック実装で先行できるが、本番接続には以下が必須（いずれもアカウント/インフラ判断が必要）:
-- Sign in with Apple の Capability/Entitlement 追加（Apple Developer 設定）
-- FirebaseAuth / FirebaseFirestore を Xcode ターゲットに追加
-- Firestore セキュリティルール（`entries/{userId}` は本人のみ書込可・全体読取可 等）とデプロイ
+### 5.5 フェーズB 実装の外部依存（Firebase方式・着手前に必要な設定）
+クライアント実装は `WorldRankingService` プロトコル＋モック実装で先行済み。本番接続（Firestore実装 `FirestoreWorldRankingService` を同プロトコルに差し込む）には以下が必須:
+- FirebaseAuth / FirebaseFirestore を Xcode ターゲットに追加（既存の FirebaseCore に増設）
+- Sign in with Apple の Capability/Entitlement 追加（Apple Developer 設定）＋ Firebase Auth に Apple プロバイダ接続
+- （Android版着手時）Google サインインを Firebase Auth に接続
+- Firestore セキュリティルール（`entries/{userId}` は本人のみ書込可・全体読取可・値の型/範囲チェック 等）とデプロイ
+- **Cloud Functions によるサーバー側検証（§4.4）**: 送信値の再計算・外れ値検出・レート制限・`verified` フラグ付与
 - プライバシーポリシー改訂（公開データ＝ニックネーム・ベスト値・地域／位置軌跡は非公開）
-- §4.4 サーバー検証（公開ランキングの不正対策）
+- アカウント削除導線（Apple審査 5.1.1(v)）
 
 ## 6. アーキテクチャ
 - **自分ランキング（フェーズA）**: 既存の `voyage_logs.json` を集計するだけ。ネットワーク不要・最速・低リスク。新規 `RankingService`（純ロジック）を追加し、`NavigationDashboardViewModel` から供給
