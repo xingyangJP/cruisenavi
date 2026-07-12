@@ -1,12 +1,213 @@
 rules_version = '2';
 
-// SAFE DEFAULT: deny everything.
-// The real world-ranking rules for `leaderboards/{metric}/entries/{uid}`
-// (owner-only write, public read, value type/range checks) are added when
-// Phase B go-live is implemented — see docs/RANKING_MODE_PLAN.md §5.3 / §5.5.
-// Keeping deny-all here prevents an accidental deploy from opening the database.
+// RideLane — World Ranking (Phase B) Firestore security rules.
+//
+// Data model (RANKING_MODE_PLAN.md §5.3): leaderboards/{metric}/entries/{userId}
+// One document == one account's personal best for one leaderboard.
+//   userId       string     (== request.auth.uid, the Firebase Auth uid; also the doc id)
+//   displayName  string     (non-unique public nickname)
+//   value        number     (best distance km | best speed km/h)
+//   achievedAt   timestamp
+//   rideId       string
+//   verified     bool       (SERVER-ONLY — set exclusively by the §4.4 Cloud Function
+//                            via the Admin SDK, which bypasses these rules; never
+//                            writable/alterable by clients)
+//   region       string     (SERVER-ONLY / optional — derived server-side from the
+//                            verified GPS track or storefront; never client-supplied)
+//   country      string     (SERVER-ONLY / optional — same rationale as region)
+//
+// Posture: FAIL-CLOSED, least-privilege. Everything is denied by default; only the
+// leaderboard entry path is opened, and only under strict validation. Client-supplied
+// values are treated as UNTRUSTED and are DEFENSE-IN-DEPTH only — the authoritative
+// anti-cheat is the §4.4 server recomputation, which is a HARD GO-LIVE PREREQUISITE.
+//
+// KEY DESIGN DECISIONS baked into these rules (see the fix list in the PR/runbook):
+//  * Public reads (`list`) return ONLY verified==true rows. Until the §4.4 Cloud
+//    Function is live and stamps verified=true, the public board is intentionally
+//    EMPTY rather than showing unverified client-fabricated rows. (Findings: fake
+//    #1 score, plausible-but-fake values.)
+//  * Clients may NEVER write `verified`, `region`, or `country`. These are set only
+//    by the trusted server (Admin SDK bypasses rules). On update they are immutable
+//    from the client's perspective. (Findings: verified spoof, region spoof.)
+//  * `achievedAt` is bounded to [2020-01-01, request.time] so it cannot be back- or
+//    future-dated for tiebreak/recency abuse. Authoritative time still comes from
+//    §4.4. (Findings: achievedAt backdating / future-dating.)
+//  * `displayName` is structurally sanitized (no control / bidi / zero-width chars)
+//    and a small reserved-word stopgap blocks obvious brand/role impersonation.
+//    Full profanity/impersonation moderation remains server-side (§5.4).
+//  * A create/update is refused while a moderation/ban record exists for the uid in
+//    the default-deny `rankingModeration/{uid}` collection, so the delete+recreate
+//    "launder my standing" bypass fails at the rules layer. Durable moderation and
+//    verification state MUST live in that server-only collection (or on the CF side),
+//    never solely on this client-deletable entry doc. (Finding: delete-recreate.)
+//
+// DEPLOY: this FILE is not auto-deployed. The ONLY sanctioned deploy path is
+// scripts/fb-deploy.sh (runs scripts/firebase-guard.sh, then forces
+// `firebase deploy --project ridelane`). Never run a bare `firebase deploy` here.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---- Constants / helpers -------------------------------------------
+
+    // Allowed leaderboard metric segments. Must match the ids the client's
+    // FirestoreWorldRankingService derives from RankingMetric
+    // (.longestDistance / .topSpeed — see Sources/Models/PersonalRanking.swift).
+    function isAllowedMetric(metric) {
+      return metric in ['longestDistance', 'topSpeed'];
+    }
+
+    // Per-metric sane upper bound for `value` (DEFENSE-IN-DEPTH cap only; the real
+    // recomputation / outlier check is server-side, §4.4). This blocks absurd
+    // injected values but does NOT and CANNOT tell a real ride from a plausible fake
+    // — that is exactly why `list` is gated on verified==true below.
+    //   topSpeed:        maxPlausibleKmh = 90 (plan §4.2).
+    //   longestDistance: 2000 km — deliberately generous single-ride ceiling.
+    function maxValueFor(metric) {
+      return metric == 'topSpeed' ? 90.0 : 2000.0;
+    }
+
+    // A moderation/ban record for this uid (written ONLY by the trusted server via
+    // the Admin SDK, in a collection the client cannot read/write/delete — it falls
+    // under the default-deny catch-all). Its presence hard-blocks (re)submission, so
+    // a flagged user cannot delete their entry and recreate a clean one.
+    function isBanned(uid) {
+      return exists(/databases/$(database)/documents/rankingModeration/$(uid));
+    }
+
+    // displayName content sanity: reject structurally hostile strings at the rules
+    // boundary. Blocks C0 controls + DEL (incl. newline/tab), zero-width & bidi marks
+    // (200B–200F), bidi embeddings/overrides (202A–202E), bidi isolates (2066–2069),
+    // and BOM/ZWNBSP (FEFF). (?s) lets `.` span newlines so multi-line payloads are
+    // caught. Unicode letters (Latin, Japanese, etc.) remain allowed.
+    function displayNameCharsOk(name) {
+      return !name.matches('(?s).*[\\x{00}-\\x{1F}\\x{7F}\\x{200B}-\\x{200F}\\x{202A}-\\x{202E}\\x{2066}-\\x{2069}\\x{FEFF}].*');
+    }
+
+    // Reserved-word STOPGAP (§5.4): block the most obvious brand/role impersonation
+    // tokens as a substring, case-insensitively. This is a coarse first line only —
+    // it may rarely false-positive, and authoritative profanity/impersonation/
+    // homoglyph moderation MUST run server-side before an entry is surfaced.
+    function displayNameNotReserved(name) {
+      return !name.matches('(?is).*(ridelane|official|admin|moderator).*');
+    }
+
+    // Shape/really-a-string checks for the CLIENT-writable fields, shared by create
+    // and update. Does NOT cover the server-only fields (verified/region/country).
+    function clientFieldsValid(data, metric, uid) {
+      return
+           data.userId is string
+        && data.userId == uid
+        // value: a number within [0, per-metric cap].
+        && data.value is number
+        && data.value >= 0
+        && data.value <= maxValueFor(metric)
+        // displayName: non-empty, length-bounded, structurally clean, not reserved.
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 30
+        && displayNameCharsOk(data.displayName)
+        && displayNameNotReserved(data.displayName)
+        // achievedAt: a real timestamp inside a plausible window — not back/future-dated.
+        && data.achievedAt is timestamp
+        && data.achievedAt <= request.time
+        && data.achievedAt > timestamp.date(2020, 1, 1)
+        // rideId: non-empty, bounded string (opaque ride reference for §4.4).
+        && data.rideId is string
+        && data.rideId.size() >= 1
+        && data.rideId.size() <= 128;
+    }
+
+    // CREATE payload: EXACTLY the client-writable keys, nothing else. `verified`,
+    // `region`, and `country` are server-only, so a client create may not carry them.
+    function isValidCreate(data, metric, uid) {
+      return
+           data.keys().hasOnly(['userId', 'displayName', 'value', 'achievedAt', 'rideId'])
+        && data.keys().hasAll(['userId', 'displayName', 'value', 'achievedAt', 'rideId'])
+        && clientFieldsValid(data, metric, uid);
+    }
+
+    // UPDATE payload: the client-writable keys, and it MAY also carry the server-only
+    // keys ONLY as unchanged pass-through (Firestore hands rules the full resulting
+    // document). The immutability checks are enforced at the call site below so a
+    // client can neither add, remove, nor alter verified/region/country.
+    function isValidUpdate(newData, metric, uid) {
+      return
+           newData.keys().hasAll(['userId', 'displayName', 'value', 'achievedAt', 'rideId'])
+        && newData.keys().hasOnly(['userId', 'displayName', 'value', 'achievedAt', 'rideId', 'verified', 'region', 'country'])
+        && clientFieldsValid(newData, metric, uid);
+    }
+
+    // ---- Leaderboard entries -------------------------------------------
+
+    match /leaderboards/{metric}/entries/{entry} {
+
+      // GET (single doc): any authenticated user may read a VERIFIED row; the owner
+      // may also read their own row while it is still pending verification (so the
+      // client can show "your submission is under review"). Requiring auth raises the
+      // bar for anonymous scraping of nicknames; world-ranking is an opt-in that
+      // already requires Sign in with Apple (§5.4). Only publishable-by-design fields
+      // are surfaced on the public board (a verified row is, by definition, a row its
+      // owner opted to publish); Firestore cannot redact individual fields, so raw
+      // userId/rideId ride along — both are opaque ids, and the GPS track is NEVER
+      // stored here, so this exposure is bounded and accepted.
+      allow get: if request.auth != null
+                 && isAllowedMetric(metric)
+                 && (resource.data.get('verified', false) == true
+                     || resource.data.userId == request.auth.uid);
+
+      // LIST (query): return ONLY verified==true rows. Because this rule references
+      // resource.data.verified, Firestore rejects any list query not constrained to
+      // `where verified == true`, so an unfiltered `orderBy value desc` cannot leak
+      // unverified fabricated rows. The Top-N query must be
+      // `where verified == true orderBy value desc limit N` (served by the composite
+      // index in firestore.indexes.json). NOTE: until the §4.4 Cloud Function stamps
+      // verified=true, this legitimately returns an EMPTY board — that is the intended
+      // fail-closed behavior, not a bug.
+      allow list: if request.auth != null
+                  && isAllowedMetric(metric)
+                  && resource.data.verified == true;
+
+      // CREATE: only the owner, only into their own uid-keyed doc, only a strictly
+      // valid client payload for a known metric, and only if not under moderation.
+      // The created doc is unverified (no `verified` key) and therefore invisible on
+      // the public board until the server verifies it.
+      allow create: if request.auth != null
+                    && isAllowedMetric(metric)
+                    && entry == request.auth.uid
+                    && !isBanned(request.auth.uid)
+                    && isValidCreate(request.resource.data, metric, request.auth.uid);
+
+      // UPDATE: owner + valid client payload, not under moderation, and the server-
+      // only fields are IMMUTABLE from the client — a client can neither grant nor
+      // revoke verification, nor establish/alter region/country. A legitimately
+      // verified user CAN still post a new personal best: their update preserves
+      // verified/region/country unchanged and passes. (.get(...,default) keeps a
+      // partial patch and a legacy doc without the field both well-defined.)
+      allow update: if request.auth != null
+                    && isAllowedMetric(metric)
+                    && entry == request.auth.uid
+                    && !isBanned(request.auth.uid)
+                    && isValidUpdate(request.resource.data, metric, request.auth.uid)
+                    && request.resource.data.get('verified', false) == resource.data.get('verified', false)
+                    && request.resource.data.get('region', '') == resource.data.get('region', '')
+                    && request.resource.data.get('country', '') == resource.data.get('country', '');
+
+      // DELETE: the owner may delete their own row (data-subject / Apple 5.1.1(v)
+      // account-deletion requirement, §5.5). Scope is strictly self (entry == uid).
+      // This is safe against the "delete + recreate to launder standing" bypass ONLY
+      // because durable moderation/ban/verification state is NOT kept solely on this
+      // client-deletable doc: bans live in the server-only rankingModeration/{uid}
+      // collection (default-deny below) and are re-checked on every create/update via
+      // isBanned(). A flagged user who deletes and recreates is blocked at create.
+      allow delete: if request.auth != null
+                    && entry == request.auth.uid;
+    }
+
+    // ---- Default deny --------------------------------------------------
+    // Any path not matched above — the `leaderboards` collection, the `{metric}` doc
+    // itself, the server-only `rankingModeration/*` collection, deeper nesting, and
+    // every other collection — is denied for every operation, for every client.
+    // Trusted server writes use the Admin SDK, which bypasses these rules entirely.
     match /{document=**} {
       allow read, write: if false;
     }
