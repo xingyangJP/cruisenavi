@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// SAFE DEFAULT: deny everything.
+// The real world-ranking rules for `leaderboards/{metric}/entries/{uid}`
+// (owner-only write, public read, value type/range checks) are added when
+// Phase B go-live is implemented — see docs/RANKING_MODE_PLAN.md §5.3 / §5.5.
+// Keeping deny-all here prevents an accidental deploy from opening the database.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
