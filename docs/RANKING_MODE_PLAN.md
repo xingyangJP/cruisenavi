@@ -125,6 +125,31 @@ collection: leaderboards/{metric}/entries/{userId}
 - 送信は自己ベスト更新時のみ（コスト最小化）
 - 読み取りは Top100＋自分順位のクエリ
 
+### 5.4 アカウント識別とニックネーム（決定事項）
+一意性は2層に分離する。**重複を防ぐのはアカウントであってニックネームではない。**
+
+| 層 | 役割 | 一意性 | 実体 |
+|---|---|---|---|
+| アカウント識別子 | 本人を一意特定／多重登録・不正防止／端末間の順位引き継ぎ | **必ず一意** | Sign in with Apple の `userIdentifier`（Apple ID・端末IDは公開しない） |
+| ニックネーム | ランキング表示名 | **非ユニーク（決定）** | ユーザー入力の `displayName` |
+
+- **ニックネームは非ユニーク**方針で確定。同名を許容し、本人特定はアカウントIDで行う（Strava等と同方式）。予約システム・重複拒否UX・改名クールダウンは不要。
+- 見分けが要る場面は地域（`region`）や小さな識別子の併記で足りる。
+- 共通で必要な最低限のルール:
+  - 文字数/文字種のバリデーション
+  - **不適切語フィルタ／なりすまし対策**（`RideLane`公式名等の予約語ブロック）
+  - 「同一人物の多重エントリ」防止は**アカウント一意性で担保**（ニックネームではない）
+- Firestore スキーマ（§5.3）はこの方針で整合済み: `entries/{userId}` の1ドキュメント=1アカウント、`displayName` は非ユニーク属性。
+- ニックネーム登録UIは初回の世界ランキング参加時にオプトインで表示（未登録なら送信しない）。
+
+### 5.5 フェーズB 実装の外部依存（着手前に必要な判断）
+クライアント実装は `WorldRankingService` プロトコル＋モック実装で先行できるが、本番接続には以下が必須（いずれもアカウント/インフラ判断が必要）:
+- Sign in with Apple の Capability/Entitlement 追加（Apple Developer 設定）
+- FirebaseAuth / FirebaseFirestore を Xcode ターゲットに追加
+- Firestore セキュリティルール（`entries/{userId}` は本人のみ書込可・全体読取可 等）とデプロイ
+- プライバシーポリシー改訂（公開データ＝ニックネーム・ベスト値・地域／位置軌跡は非公開）
+- §4.4 サーバー検証（公開ランキングの不正対策）
+
 ## 6. アーキテクチャ
 - **自分ランキング（フェーズA）**: 既存の `voyage_logs.json` を集計するだけ。ネットワーク不要・最速・低リスク。新規 `RankingService`（純ロジック）を追加し、`NavigationDashboardViewModel` から供給
 - **不正防止**: `RideIntegrityAnalyzer`（新規）を導入。`LocationService` の GPS＋CoreMotion を受け取り、有効区間/有効距離/最高継続速度/eligibility を算出。ライド終了時 `finalizeRideLogIfNeeded()` で呼び出し、`VoyageLog` に反映

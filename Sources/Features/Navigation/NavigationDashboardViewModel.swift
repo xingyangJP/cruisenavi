@@ -123,6 +123,9 @@ final class NavigationDashboardViewModel: ObservableObject {
     @Published var restSpotSuggestion: RestSpotSuggestion?
     @Published var healthSyncEnabled: Bool
     @Published var activeRideSessionMode: RideSessionMode?
+    /// The user's world-ranking profile (nickname + account id), or `nil` if they have not opted in.
+    /// Phase B world ranking is scaffolding over a mock backend (RANKING_MODE_PLAN.md §5.5).
+    @Published var rankingProfile: RankingProfile?
 
     let locationService: LocationService
     private let weatherService: WeatherService
@@ -148,14 +151,28 @@ final class NavigationDashboardViewModel: ObservableObject {
     private static let rainAlertTargetRange = 30...60
     private static let healthSyncEnabledKey = "health.sync.enabled"
 
+    // World ranking (Phase B) — identity/profile/world-service seams. Defaults are the local,
+    // offline mock implementations; the live Sign in with Apple + Firestore stack plugs in here
+    // later without touching the view/UI (RANKING_MODE_PLAN.md §5.3–§5.5).
+    private let rankingIdentityProvider: RankingIdentityProviding
+    private let rankingProfileStore: RankingProfileStoring
+    private let worldRankingService: WorldRankingService
+
     init(
         locationService: LocationService,
         weatherService: WeatherService,
-        rideLogSyncService: RideLogSyncService = NoopRideLogSyncService()
+        rideLogSyncService: RideLogSyncService = NoopRideLogSyncService(),
+        rankingIdentityProvider: RankingIdentityProviding = AnonymousRankingIdentityProvider(),
+        rankingProfileStore: RankingProfileStoring = LocalRankingProfileStore(),
+        worldRankingService: WorldRankingService = MockWorldRankingService()
     ) {
         self.locationService = locationService
         self.weatherService = weatherService
         self.rideLogSyncService = rideLogSyncService
+        self.rankingIdentityProvider = rankingIdentityProvider
+        self.rankingProfileStore = rankingProfileStore
+        self.worldRankingService = worldRankingService
+        self.rankingProfile = rankingProfileStore.load()
         self.healthSyncEnabled = UserDefaults.standard.object(forKey: Self.healthSyncEnabledKey) as? Bool ?? false
 
         bindLocation()
@@ -172,6 +189,43 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func personalRankingBoard(for metric: RankingMetric, limit: Int = 20) -> PersonalRankingBoard {
         RankingService.board(for: metric, logs: voyageLogs, limit: limit)
+    }
+
+    // MARK: - World ranking (Phase B scaffolding, mock backend)
+
+    /// The stable account id from the identity provider (anonymous UUID today).
+    var rankingAccountId: String {
+        rankingIdentityProvider.accountId
+    }
+
+    /// Validates `raw`, and on success persists a `RankingProfile` and publishes it. This is the
+    /// opt-in registration step (no profile is created — and nothing is submitted — until called).
+    @discardableResult
+    func registerRankingNickname(_ raw: String) -> Result<RankingProfile, NicknameValidationError> {
+        switch NicknameValidator.validate(raw) {
+        case .success(let nickname):
+            let profile = RankingProfile(nickname: nickname, accountId: rankingIdentityProvider.accountId)
+            rankingProfileStore.save(profile)
+            rankingProfile = profile
+            return .success(profile)
+        case .failure(let error):
+            return .failure(error)
+        }
+    }
+
+    /// Builds the world leaderboard for `metric` from the world service, merging the user's own
+    /// on-device personal best. Uses the registered profile's nickname/account id when present.
+    func worldRankingBoard(for metric: RankingMetric) async -> WorldRankingBoard {
+        let profile = rankingProfile
+        let nickname = profile?.nickname ?? ""
+        let accountId = profile?.accountId ?? rankingIdentityProvider.accountId
+        let userBest = personalRankingBoard(for: metric).best?.value ?? 0
+        return await worldRankingService.fetchLeaderboard(
+            metric: metric,
+            userBest: userBest,
+            accountId: accountId,
+            nickname: nickname
+        )
     }
 
     func setHealthSyncEnabled(_ enabled: Bool) {

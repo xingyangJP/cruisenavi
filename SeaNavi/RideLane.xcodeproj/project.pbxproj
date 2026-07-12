@@ -45,6 +45,12 @@
 		AA00000000000000000000F2 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F1 /* RankingView.swift */; };
 		AB00000000000000000000A2 /* RideIntegrityAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */; };
 		AB00000000000000000000B2 /* RankingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000B1 /* RankingServiceTests.swift */; };
+		AA00000000000000000000G2 /* RankingIdentityProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000G1 /* RankingIdentityProviding.swift */; };
+		AA00000000000000000000H2 /* RankingProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000H1 /* RankingProfile.swift */; };
+		AA00000000000000000000I2 /* WorldRankingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000I1 /* WorldRankingService.swift */; };
+		AA00000000000000000000J2 /* MockWorldRankingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000J1 /* MockWorldRankingService.swift */; };
+		AB00000000000000000000C2 /* NicknameValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000C1 /* NicknameValidatorTests.swift */; };
+		AB00000000000000000000D2 /* MockWorldRankingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000D1 /* MockWorldRankingServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -97,6 +103,12 @@
 		AA00000000000000000000F1 /* RankingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingView.swift; path = ../Sources/Features/Ranking/RankingView.swift; sourceTree = SOURCE_ROOT; };
 		AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideIntegrityAnalyzerTests.swift; sourceTree = "<group>"; };
 		AB00000000000000000000B1 /* RankingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankingServiceTests.swift; sourceTree = "<group>"; };
+		AA00000000000000000000G1 /* RankingIdentityProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingIdentityProviding.swift; path = ../Sources/Services/Ranking/RankingIdentityProviding.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000H1 /* RankingProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingProfile.swift; path = ../Sources/Models/RankingProfile.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000I1 /* WorldRankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldRankingService.swift; path = ../Sources/Services/Ranking/WorldRankingService.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000J1 /* MockWorldRankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MockWorldRankingService.swift; path = ../Sources/Services/Ranking/MockWorldRankingService.swift; sourceTree = SOURCE_ROOT; };
+		AB00000000000000000000C1 /* NicknameValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NicknameValidatorTests.swift; sourceTree = "<group>"; };
+		AB00000000000000000000D1 /* MockWorldRankingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockWorldRankingServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -210,6 +222,7 @@
 				D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */,
 				AA00000000000000000000A1 /* RideLocationSample.swift */,
 				AA00000000000000000000D1 /* PersonalRanking.swift */,
+				AA00000000000000000000H1 /* RankingProfile.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -240,6 +253,9 @@
 				AA00000000000000000000B1 /* RideIntegrityAnalyzer.swift */,
 				AA00000000000000000000C1 /* MotionActivityRecorder.swift */,
 				AA00000000000000000000E1 /* RankingService.swift */,
+				AA00000000000000000000G1 /* RankingIdentityProviding.swift */,
+				AA00000000000000000000I1 /* WorldRankingService.swift */,
+				AA00000000000000000000J1 /* MockWorldRankingService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -346,6 +362,8 @@
 				E10000032F00000100AAA001 /* RideLaneSmokeTests.swift */,
 				AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */,
 				AB00000000000000000000B1 /* RankingServiceTests.swift */,
+				AB00000000000000000000C1 /* NicknameValidatorTests.swift */,
+				AB00000000000000000000D1 /* MockWorldRankingServiceTests.swift */,
 			);
 			path = RideLaneTests;
 			sourceTree = "<group>";
@@ -502,6 +520,10 @@
 				AA00000000000000000000D2 /* PersonalRanking.swift in Sources */,
 				AA00000000000000000000E2 /* RankingService.swift in Sources */,
 				AA00000000000000000000F2 /* RankingView.swift in Sources */,
+				AA00000000000000000000G2 /* RankingIdentityProviding.swift in Sources */,
+				AA00000000000000000000H2 /* RankingProfile.swift in Sources */,
+				AA00000000000000000000I2 /* WorldRankingService.swift in Sources */,
+				AA00000000000000000000J2 /* MockWorldRankingService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -512,6 +534,8 @@
 				E10000012F00000100AAA001 /* RideLaneSmokeTests.swift in Sources */,
 				AB00000000000000000000A2 /* RideIntegrityAnalyzerTests.swift in Sources */,
 				AB00000000000000000000B2 /* RankingServiceTests.swift in Sources */,
+				AB00000000000000000000C2 /* NicknameValidatorTests.swift in Sources */,
+				AB00000000000000000000D2 /* MockWorldRankingServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

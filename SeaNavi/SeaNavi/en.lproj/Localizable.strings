@@ -248,3 +248,19 @@
 "ランキングを見る" = "View ranking";
 "ランキング指標" = "Ranking metric";
 "表示範囲" = "Scope";
+
+"ニックネームを入力してください" = "Please enter a nickname";
+"ニックネームは%d文字以上で入力してください" = "Nickname must be at least %d characters";
+"ニックネームは%d文字以内で入力してください" = "Nickname must be at most %d characters";
+"使用できない文字が含まれています" = "Contains characters that can't be used";
+"そのニックネームは使用できません" = "That nickname can't be used";
+"世界ランキングに参加" = "Join the world ranking";
+"ニックネームを登録すると、世界ランキングに参加できます。" = "Register a nickname to join the world ranking.";
+"参加する" = "Join";
+"モックデータ / 本番未接続" = "Mock data / not connected to production";
+"これはサンプルデータです。本番の世界ランキングは未接続です。" = "This is sample data. The live world ranking is not connected yet.";
+"あなた" = "You";
+"ニックネーム" = "Nickname";
+"%d〜%d文字。英数字・かな・漢字が使えます。" = "%d–%d characters. Letters, numbers, and CJK are allowed.";
+"登録する" = "Register";
+"ニックネームを登録" = "Register nickname";

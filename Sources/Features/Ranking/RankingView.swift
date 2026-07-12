@@ -5,6 +5,9 @@ struct RankingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedMetric: RankingMetric = .longestDistance
     @State private var selectedScope: RankingScope = .personal
+    @State private var showingNicknameSheet = false
+    @State private var worldBoard: WorldRankingBoard?
+    @State private var isLoadingWorld = false
 
     var body: some View {
         NavigationStack {
@@ -39,13 +42,18 @@ struct RankingView: View {
                         case .personal:
                             personalContent
                         case .world:
-                            worldPlaceholder
+                            worldContent
                         }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
                 }
                 .scrollIndicators(.hidden)
+                .task(id: worldReloadKey) {
+                    if selectedScope == .world {
+                        await loadWorldBoard()
+                    }
+                }
             }
             .navigationTitle("ランキング")
             .navigationBarTitleDisplayMode(.inline)
@@ -177,23 +185,181 @@ struct RankingView: View {
 
     // MARK: - World scope
 
-    private var worldPlaceholder: some View {
+    @ViewBuilder
+    private var worldContent: some View {
+        if viewModel.rankingProfile == nil {
+            nicknameOptInCard
+        } else {
+            worldLeaderboard
+        }
+    }
+
+    // Opt-in prompt shown until the user registers a nickname. World data is never fetched or
+    // submitted before this step (plan §5.4 / §8.1 — explicit opt-in).
+    private var nicknameOptInCard: some View {
         GlassCard {
             VStack(spacing: 12) {
                 Image(systemName: "globe")
                     .font(.system(size: 40, weight: .semibold))
                     .foregroundStyle(Color.aquaTeal)
-                Text("準備中")
+                Text("世界ランキングに参加")
                     .font(.headline)
                     .foregroundStyle(Color.citrusPrimaryText)
-                Text("世界ランキングは今後のアップデートで対応予定です。")
+                Text("ニックネームを登録すると、世界ランキングに参加できます。")
                     .font(.subheadline)
                     .foregroundStyle(Color.citrusSecondaryText)
                     .multilineTextAlignment(.center)
+
+                Button {
+                    showingNicknameSheet = true
+                } label: {
+                    Text("参加する")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.aquaTeal, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.top, 4)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
         }
+        .sheet(isPresented: $showingNicknameSheet) {
+            NicknameRegistrationSheet(viewModel: viewModel)
+        }
+    }
+
+    @ViewBuilder
+    private var worldLeaderboard: some View {
+        mockDataBanner
+
+        if selectedMetric == .topSpeed {
+            Text("安全第一。速度記録は下り区間などを含みます。無理な走行はしないでください。")
+                .font(.caption)
+                .foregroundStyle(Color.citrusOrange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
+        }
+
+        if let board = worldBoard {
+            worldBoardCard(board)
+        } else {
+            GlassCard {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("読み込み中...")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.citrusSecondaryText)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
+    // Prominent, always-on notice that the leaderboard is synthesized (isMockData) — live ranking
+    // is not yet connected (plan §5.5).
+    private var mockDataBanner: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "wrench.and.screwdriver.fill")
+                .font(.caption)
+                .foregroundStyle(Color.citrusAmber)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("モックデータ / 本番未接続")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.citrusAmber)
+                Text("これはサンプルデータです。本番の世界ランキングは未接続です。")
+                    .font(.caption)
+                    .foregroundStyle(Color.citrusSecondaryText)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.citrusBorder)
+        )
+    }
+
+    @ViewBuilder
+    private func worldBoardCard(_ board: WorldRankingBoard) -> some View {
+        let topEntries = Array(board.entries.prefix(10))
+        let userInTop = topEntries.contains { $0.isCurrentUser }
+
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(topEntries) { entry in
+                    worldRow(entry)
+                    if entry.id != topEntries.last?.id {
+                        Divider().overlay(Color.citrusBorder)
+                    }
+                }
+
+                // Pin the user's own row if they fall outside the visible top entries.
+                if !userInTop, let userEntry = board.currentUserEntry {
+                    Divider().overlay(Color.citrusBorder)
+                    Text("···")
+                        .font(.caption.bold())
+                        .foregroundStyle(Color.citrusSecondaryText)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    worldRow(userEntry)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func worldRow(_ entry: WorldRankingEntry) -> some View {
+        HStack(spacing: 12) {
+            Text(L10n.format("%d位", entry.rank))
+                .font(.subheadline.bold())
+                .foregroundStyle(Color.citrusPrimaryText)
+                .frame(minWidth: 44, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(entry.nickname)
+                        .font(.headline)
+                        .foregroundStyle(Color.citrusPrimaryText)
+                    if entry.isCurrentUser {
+                        Text("あなた")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.aquaTeal)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.7), in: Capsule())
+                    }
+                }
+                if let region = entry.region, !region.isEmpty {
+                    Text(region)
+                        .font(.caption)
+                        .foregroundStyle(Color.citrusSecondaryText)
+                }
+            }
+
+            Spacer()
+
+            Text(formattedValue(entry.value))
+                .font(.subheadline.bold())
+                .foregroundStyle(Color.citrusPrimaryText)
+        }
+        .padding(.horizontal, entry.isCurrentUser ? 10 : 0)
+        .padding(.vertical, entry.isCurrentUser ? 8 : 0)
+        .background(
+            entry.isCurrentUser
+                ? Color.aquaTeal.opacity(0.16)
+                : Color.clear,
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+    }
+
+    private func loadWorldBoard() async {
+        guard viewModel.rankingProfile != nil else { return }
+        isLoadingWorld = true
+        worldBoard = await viewModel.worldRankingBoard(for: selectedMetric)
+        isLoadingWorld = false
     }
 
     // MARK: - Helpers
@@ -222,9 +388,103 @@ struct RankingView: View {
         let hasExcludedRide = viewModel.voyageLogs.contains { $0.isRankingEligible == false }
         return hasExcludedRide ? L10n.tr("乗り物移動を検知したため一部を記録対象外にしました") : nil
     }
+
+    /// Distinct value that changes whenever the world board must be refetched: scope, metric, or
+    /// whether the user has a profile yet (so the board loads immediately after registration).
+    private var worldReloadKey: String {
+        "\(selectedScope)-\(selectedMetric)-\(viewModel.rankingProfile != nil)"
+    }
 }
 
 private enum RankingScope {
     case personal
     case world
+}
+
+/// Opt-in nickname registration sheet. Inline validation reuses the pure `NicknameValidator`;
+/// error messages come from `NicknameValidationError.message` (localized). No uniqueness check —
+/// nicknames are non-unique by design (plan §5.4).
+private struct NicknameRegistrationSheet: View {
+    @ObservedObject var viewModel: NavigationDashboardViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var nickname: String = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [Color.citrusCanvasStart, Color.citrusCanvasEnd],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 20) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("ニックネーム")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(Color.citrusSecondaryText)
+
+                                TextField("ニックネームを入力してください", text: $nickname)
+                                    .textInputAutocapitalization(.never)
+                                    .disableAutocorrection(true)
+                                    .font(.headline)
+                                    .foregroundStyle(Color.citrusPrimaryText)
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+                                    .onChange(of: nickname) { _ in
+                                        errorMessage = nil
+                                    }
+
+                                if let errorMessage {
+                                    Text(errorMessage)
+                                        .font(.caption)
+                                        .foregroundStyle(Color.citrusOrange)
+                                }
+
+                                Text(L10n.format("%d〜%d文字。英数字・かな・漢字が使えます。", NicknameValidator.minLength, NicknameValidator.maxLength))
+                                    .font(.caption)
+                                    .foregroundStyle(Color.citrusSecondaryText)
+                            }
+                        }
+
+                        Button {
+                            register()
+                        } label: {
+                            Text("登録する")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.aquaTeal, in: RoundedRectangle(cornerRadius: 14))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle("ニックネームを登録")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("キャンセル") { dismiss() }
+                        .foregroundStyle(Color.citrusPrimaryText)
+                }
+            }
+        }
+    }
+
+    private func register() {
+        switch viewModel.registerRankingNickname(nickname) {
+        case .success:
+            dismiss()
+        case .failure(let error):
+            errorMessage = error.message
+        }
+    }
 }
