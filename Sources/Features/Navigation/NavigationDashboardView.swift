@@ -14,6 +14,8 @@ struct NavigationDashboardView: View {
     @State private var selectedLegalDocument: LegalDocumentPage?
     @State private var showHealthSyncInfo = false
     @State private var showSettingsSheet = false
+    @State private var showRankingSheet = false
+    @State private var pendingOpenRanking = false
     @State private var didLogHomeView = false
     @AppStorage("onboarding.walkthrough.completed") private var walkthroughCompleted = false
 
@@ -130,6 +132,17 @@ struct NavigationDashboardView: View {
                             showDrivingMode = true
                         } label: {
                             Label("フリーライドを開始", systemImage: "figure.outdoor.cycle")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.aquaTeal, in: RoundedRectangle(cornerRadius: 20))
+                        }
+                        .foregroundStyle(.white)
+
+                        Button {
+                            showRankingSheet = true
+                        } label: {
+                            Label("ランキング", systemImage: "trophy.fill")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .padding()
@@ -270,8 +283,16 @@ struct NavigationDashboardView: View {
         }
         .sheet(item: $viewModel.latestRideReward, onDismiss: {
             viewModel.consumeLatestRideReward()
+            if pendingOpenRanking {
+                pendingOpenRanking = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showRankingSheet = true
+                }
+            }
         }) { reward in
-            RideCompletionRewardSheet(reward: reward)
+            RideCompletionRewardSheet(reward: reward, onOpenRanking: {
+                pendingOpenRanking = true
+            })
         }
         .sheet(item: $selectedLegalDocument) { document in
             LegalDocumentSheet(document: document)
@@ -283,6 +304,9 @@ struct NavigationDashboardView: View {
                     set: { viewModel.setHealthSyncEnabled($0) }
                 )
             )
+        }
+        .sheet(isPresented: $showRankingSheet) {
+            RankingView(viewModel: viewModel)
         }
         .sheet(isPresented: $showSettingsSheet) {
             HomeSettingsSheet(
@@ -524,6 +548,7 @@ private struct RestSpotSuggestionCard: View {
 
 private struct RideCompletionRewardSheet: View {
     let reward: RideCompletionReward
+    var onOpenRanking: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -541,6 +566,16 @@ private struct RideCompletionRewardSheet: View {
                         .foregroundStyle(Color.citrusPrimaryText)
                 }
                 Spacer()
+                if let onOpenRanking {
+                    Button("ランキングを見る") {
+                        onOpenRanking()
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.aquaTeal)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
                 Button("閉じる") {
                     dismiss()
                 }

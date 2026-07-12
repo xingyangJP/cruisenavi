@@ -24,6 +24,14 @@ struct VoyageLog: Identifiable {
     let averageSpeed: Double
     let weatherSummary: String
     let mode: VoyageLogMode
+    // `var … = nil` (not `let`) so these appear in the synthesized memberwise initializer as
+    // defaulted parameters: existing call sites keep compiling, and ride finalization can populate
+    // them. A `let` with a default value is excluded from the memberwise init entirely.
+    var maxSustainedSpeed: Double? = nil
+    var effectiveDistance: Double? = nil
+    var validSampleRatio: Double? = nil
+    var isRankingEligible: Bool? = nil
+    var activityBreakdown: [String: Double]? = nil
 
     var duration: TimeInterval {
         endTime.timeIntervalSince(startTime)

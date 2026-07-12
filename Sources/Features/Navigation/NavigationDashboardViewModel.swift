@@ -136,6 +136,8 @@ final class NavigationDashboardViewModel: ObservableObject {
     private var spotsTask: Task<Void, Never>?
     private var activeRideStartTime: Date?
     private var activeRideStartRouteIndex: Int?
+    private var activeRideStartSampleIndex: Int?
+    private let motionActivityRecorder = MotionActivityRecorder()
     private var lastOffRouteRerouteAt: Date = .distantPast
     private var lastWeatherCoordinate: CLLocationCoordinate2D?
     private var lastWeatherRefreshAt: Date = .distantPast
@@ -166,6 +168,10 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     func consumeLatestRideReward() {
         latestRideReward = nil
+    }
+
+    func personalRankingBoard(for metric: RankingMetric, limit: Int = 20) -> PersonalRankingBoard {
+        RankingService.board(for: metric, logs: voyageLogs, limit: limit)
     }
 
     func setHealthSyncEnabled(_ enabled: Bool) {
@@ -584,6 +590,7 @@ final class NavigationDashboardViewModel: ObservableObject {
         guard activeRideStartTime == nil else { return }
         activeRideStartTime = Date()
         activeRideStartRouteIndex = locationService.routePoints.count
+        activeRideStartSampleIndex = locationService.rideSamples.count
     }
 
     private func finalizeRideLogIfNeeded() {
@@ -602,10 +609,23 @@ final class NavigationDashboardViewModel: ObservableObject {
             weatherSnapshot.windSpeed * 3.6,
             weatherSnapshot.roadRisk
         )
-        let previousBestDistance = voyageLogs.map(\.distance).max() ?? 0
+        // Slice the sample stream captured during this ride (accumulated across the session,
+        // like routePoints). Reset the active markers now so the ride cannot be double-finalized
+        // while the async motion query is in flight.
+        let sampleStart = min(activeRideStartSampleIndex ?? 0, locationService.rideSamples.count)
+        let rideSamples = Array(locationService.rideSamples.dropFirst(sampleStart))
+        activeRideStartTime = nil
+        activeRideStartRouteIndex = nil
+        activeRideStartSampleIndex = nil
 
-        let newLog = VoyageLog(
-            id: UUID(),
+        // Persist the base ride log SYNCHRONOUSLY first (integrity fields left nil). The motion
+        // query below is async and the app is frequently backgrounded/suspended the instant a ride
+        // ends, so deferring the write behind that await opened a data-loss window: a crash or
+        // suspension before the query returned would drop the ride entirely. Writing now guarantees
+        // the ride survives; the integrity fields are layered in and re-persisted once available.
+        let logId = UUID()
+        let baseLog = VoyageLog(
+            id: logId,
             startTime: startTime,
             endTime: endTime,
             routePoints: resolvedRoute,
@@ -614,32 +634,55 @@ final class NavigationDashboardViewModel: ObservableObject {
             weatherSummary: weatherSummary,
             mode: rideMode
         )
-        voyageLogs.insert(newLog, at: 0)
-        latestRideReward = buildRideCompletionReward(newLog: newLog, previousBestDistance: previousBestDistance)
+        voyageLogs.insert(baseLog, at: 0)
         recalculateGrowthWidgets()
         persistVoyageLogs()
 
-        if healthSyncEnabled {
-            rideLogHealthStatuses[newLog.id] = .syncing
-            Task { [rideLogSyncService] in
-                let result = await rideLogSyncService.syncRideLog(newLog)
-                await MainActor.run {
-                    switch result {
-                    case .synced:
-                        rideLogHealthStatuses[newLog.id] = .synced
-                    case .skipped(let reason):
-                        rideLogHealthStatuses[newLog.id] = .skipped(reason)
-                    case .failed(let reason):
-                        rideLogHealthStatuses[newLog.id] = .failed(reason)
-                    }
-                }
-            }
-        } else {
-            rideLogHealthStatuses[newLog.id] = .skipped(L10n.tr("Health連携オフ"))
-        }
+        // The motion-activity query is async; enrich the already-persisted log with integrity data
+        // once segments are available, then re-persist and publish the completion reward.
+        Task { [weak self] in
+            guard let self else { return }
+            let motionSegments = await self.motionActivityRecorder.segments(from: startTime, to: endTime)
+            let integrity = RideIntegrityAnalyzer.analyze(samples: rideSamples, segments: motionSegments)
 
-        activeRideStartTime = nil
-        activeRideStartRouteIndex = nil
+            guard let index = self.voyageLogs.firstIndex(where: { $0.id == logId }) else { return }
+            self.voyageLogs[index].maxSustainedSpeed = integrity.maxSustainedSpeed
+            self.voyageLogs[index].effectiveDistance = integrity.effectiveDistance
+            self.voyageLogs[index].validSampleRatio = integrity.validSampleRatio
+            self.voyageLogs[index].isRankingEligible = integrity.isRankingEligible
+            self.voyageLogs[index].activityBreakdown = integrity.activityBreakdown
+            let enrichedLog = self.voyageLogs[index]
+
+            // Compute personal bests from the SAME eligibility-filtered, effective metrics the
+            // ranking screen uses, over every OTHER log, and recomputed here (not snapshotted before
+            // the await) so back-to-back finalizations compare against current state.
+            let others = self.voyageLogs.filter { $0.id != logId }
+            let previousBestDistance = RankingService.board(for: .longestDistance, logs: others).best?.value ?? 0
+            let previousBestSpeed = RankingService.board(for: .topSpeed, logs: others).best?.value ?? 0
+
+            self.latestRideReward = self.buildRideCompletionReward(
+                newLog: enrichedLog,
+                previousBestDistance: previousBestDistance,
+                previousBestSpeed: previousBestSpeed
+            )
+            self.recalculateGrowthWidgets()
+            self.persistVoyageLogs()
+
+            if self.healthSyncEnabled {
+                self.rideLogHealthStatuses[enrichedLog.id] = .syncing
+                let result = await self.rideLogSyncService.syncRideLog(enrichedLog)
+                switch result {
+                case .synced:
+                    self.rideLogHealthStatuses[enrichedLog.id] = .synced
+                case .skipped(let reason):
+                    self.rideLogHealthStatuses[enrichedLog.id] = .skipped(reason)
+                case .failed(let reason):
+                    self.rideLogHealthStatuses[enrichedLog.id] = .failed(reason)
+                }
+            } else {
+                self.rideLogHealthStatuses[enrichedLog.id] = .skipped(L10n.tr("Health連携オフ"))
+            }
+        }
     }
 
     private func resolvedRideLogRoute(from capturedRoute: [CLLocationCoordinate2D]) -> [CLLocationCoordinate2D] {
@@ -840,7 +883,8 @@ final class NavigationDashboardViewModel: ObservableObject {
 
     private func buildRideCompletionReward(
         newLog: VoyageLog,
-        previousBestDistance: Double
+        previousBestDistance: Double,
+        previousBestSpeed: Double
     ) -> RideCompletionReward {
         var badges: [String] = []
         if newLog.distance >= 30 {
@@ -850,8 +894,17 @@ final class NavigationDashboardViewModel: ObservableObject {
         } else {
             badges.append(L10n.tr("ショートライド"))
         }
-        if newLog.distance > previousBestDistance {
+        // Compare against the SAME metrics the ranking screen uses: effective (anti-cheat) distance
+        // and sustained speed, and only celebrate a personal best for rides that are actually
+        // ranking-eligible (an ineligible ride never appears on the board, so a "best" there would
+        // mislead). `previousBest*` are the eligible/effective bests from RankingService.
+        let isEligible = newLog.isRankingEligible != false
+        let newDistanceValue = newLog.effectiveDistance ?? newLog.distance
+        if isEligible, newDistanceValue > previousBestDistance {
             badges.append(L10n.tr("自己最長更新"))
+        }
+        if isEligible, let speed = newLog.maxSustainedSpeed, speed > previousBestSpeed, speed > 0 {
+            badges.append(L10n.tr("自己最速更新"))
         }
         let remaining = max(weeklyMission.targetKm - (weeklyMission.currentKm + newLog.distance), 0)
         if remaining <= 0 {
@@ -941,6 +994,11 @@ private struct PersistedVoyageLog: Codable {
     let averageSpeed: Double
     let weatherSummary: String
     let mode: VoyageLogMode?
+    let maxSustainedSpeed: Double?
+    let effectiveDistance: Double?
+    let validSampleRatio: Double?
+    let isRankingEligible: Bool?
+    let activityBreakdown: [String: Double]?
 
     init(_ model: VoyageLog) {
         id = model.id
@@ -951,6 +1009,11 @@ private struct PersistedVoyageLog: Codable {
         averageSpeed = model.averageSpeed
         weatherSummary = model.weatherSummary
         mode = model.mode
+        maxSustainedSpeed = model.maxSustainedSpeed
+        effectiveDistance = model.effectiveDistance
+        validSampleRatio = model.validSampleRatio
+        isRankingEligible = model.isRankingEligible
+        activityBreakdown = model.activityBreakdown
     }
 
     var model: VoyageLog {
@@ -962,7 +1025,12 @@ private struct PersistedVoyageLog: Codable {
             distance: distance,
             averageSpeed: averageSpeed,
             weatherSummary: weatherSummary,
-            mode: mode ?? .guidedNavigation
+            mode: mode ?? .guidedNavigation,
+            maxSustainedSpeed: maxSustainedSpeed,
+            effectiveDistance: effectiveDistance,
+            validSampleRatio: validSampleRatio,
+            isRankingEligible: isRankingEligible,
+            activityBreakdown: activityBreakdown
         )
     }
 }

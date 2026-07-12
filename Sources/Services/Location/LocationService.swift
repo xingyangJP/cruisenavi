@@ -33,6 +33,7 @@ final class LocationService: NSObject, ObservableObject {
     @Published var currentLocation: CLLocation?
     @Published var heading: CLHeading?
     @Published var routePoints: [CLLocationCoordinate2D] = []
+    @Published private(set) var rideSamples: [RideLocationSample] = []
     @Published var currentSpeedKmh: Double = 0
     @Published var trackingMode: TrackingMode = .unavailable
     @Published var trackingStatusMessage: String = L10n.tr("位置情報の取得を待機中")
@@ -151,6 +152,13 @@ final class LocationService: NSObject, ObservableObject {
                 playbackIndex += 1
 
                 routePoints.append(point)
+                rideSamples.append(RideLocationSample(
+                    timestamp: Date(),
+                    latitude: point.latitude,
+                    longitude: point.longitude,
+                    speedKmh: 0,
+                    horizontalAccuracy: 5
+                ))
                 currentLocation = CLLocation(latitude: point.latitude, longitude: point.longitude)
                 currentSpeedKmh = 0
             }
@@ -236,6 +244,13 @@ extension LocationService: CLLocationManagerDelegate {
         currentSpeedKmh = normalizeSpeedKmh(from: location)
         currentLocation = location
         routePoints.append(location.coordinate)
+        rideSamples.append(RideLocationSample(
+            timestamp: location.timestamp,
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            speedKmh: currentSpeedKmh,
+            horizontalAccuracy: location.horizontalAccuracy
+        ))
         lastSpeedSampleLocation = location
         trackingMode = .gps
         trackingStatusMessage = L10n.tr("GPSアクティブ")

@@ -37,6 +37,14 @@
 		E20000012F00000100BBB001 /* OnboardingWalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */; };
 		F50000012F20000100AAA001 /* ../GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F50000032F20000100AAA001 /* ../GoogleService-Info.plist */; };
 		F50000022F20000100AAA001 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F50000052F20000100AAA001 /* FirebaseAnalytics */; };
+		AA00000000000000000000A2 /* RideLocationSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000A1 /* RideLocationSample.swift */; };
+		AA00000000000000000000B2 /* RideIntegrityAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B1 /* RideIntegrityAnalyzer.swift */; };
+		AA00000000000000000000C2 /* MotionActivityRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000C1 /* MotionActivityRecorder.swift */; };
+		AA00000000000000000000D2 /* PersonalRanking.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000D1 /* PersonalRanking.swift */; };
+		AA00000000000000000000E2 /* RankingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000E1 /* RankingService.swift */; };
+		AA00000000000000000000F2 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000F1 /* RankingView.swift */; };
+		AB00000000000000000000A2 /* RideIntegrityAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */; };
+		AB00000000000000000000B2 /* RankingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000000B1 /* RankingServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +89,14 @@
 		E10000052F00000100AAA001 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWalkthroughView.swift; sourceTree = "<group>"; };
 		F50000032F20000100AAA001 /* ../GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "../GoogleService-Info.plist"; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000A1 /* RideLocationSample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RideLocationSample.swift; path = ../Sources/Models/RideLocationSample.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000B1 /* RideIntegrityAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RideIntegrityAnalyzer.swift; path = ../Sources/Services/Integrity/RideIntegrityAnalyzer.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000C1 /* MotionActivityRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MotionActivityRecorder.swift; path = ../Sources/Services/Motion/MotionActivityRecorder.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000D1 /* PersonalRanking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PersonalRanking.swift; path = ../Sources/Models/PersonalRanking.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000E1 /* RankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingService.swift; path = ../Sources/Services/Ranking/RankingService.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000F1 /* RankingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingView.swift; path = ../Sources/Features/Ranking/RankingView.swift; sourceTree = SOURCE_ROOT; };
+		AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideIntegrityAnalyzerTests.swift; sourceTree = "<group>"; };
+		AB00000000000000000000B1 /* RankingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankingServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -162,6 +178,14 @@
 			path = Weather;
 			sourceTree = "<group>";
 		};
+		AA00000000000000000000F0 /* Ranking */ = {
+			isa = PBXGroup;
+			children = (
+				AA00000000000000000000F1 /* RankingView.swift */,
+			);
+			path = Ranking;
+			sourceTree = "<group>";
+		};
 		D3046ABA2EBF1F0F00E1A497 /* Features */ = {
 			isa = PBXGroup;
 			children = (
@@ -171,6 +195,7 @@
 				D3046AB12EBF1F0F00E1A497 /* Logbook */,
 				D3046AB52EBF1F0F00E1A497 /* Navigation */,
 				D3046AB72EBF1F0F00E1A497 /* Ports */,
+				AA00000000000000000000F0 /* Ranking */,
 				D3046AB92EBF1F0F00E1A497 /* Weather */,
 			);
 			path = Features;
@@ -183,6 +208,8 @@
 				D3046ABB2EBF1F0F00E1A497 /* Harbor.swift */,
 				D3046ABD2EBF1F0F00E1A497 /* VoyageLog.swift */,
 				D3046ABE2EBF1F0F00E1A497 /* WeatherSnapshot.swift */,
+				AA00000000000000000000A1 /* RideLocationSample.swift */,
+				AA00000000000000000000D1 /* PersonalRanking.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -210,6 +237,9 @@
 				D3046AC12EBF1F0F00E1A497 /* API */,
 				D3046AC32EBF1F0F00E1A497 /* Location */,
 				D4A100032ED0000000000001 /* Health */,
+				AA00000000000000000000B1 /* RideIntegrityAnalyzer.swift */,
+				AA00000000000000000000C1 /* MotionActivityRecorder.swift */,
+				AA00000000000000000000E1 /* RankingService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -314,6 +344,8 @@
 			isa = PBXGroup;
 			children = (
 				E10000032F00000100AAA001 /* RideLaneSmokeTests.swift */,
+				AB00000000000000000000A1 /* RideIntegrityAnalyzerTests.swift */,
+				AB00000000000000000000B1 /* RankingServiceTests.swift */,
 			);
 			path = RideLaneTests;
 			sourceTree = "<group>";
@@ -464,6 +496,12 @@
 				D3046AD12EBF1F0F00E1A497 /* LogbookListView.swift in Sources */,
 				D3046AD22EBF1F0F00E1A497 /* Harbor.swift in Sources */,
 				D3046AD32EBF1F0F00E1A497 /* LocationService.swift in Sources */,
+				AA00000000000000000000A2 /* RideLocationSample.swift in Sources */,
+				AA00000000000000000000B2 /* RideIntegrityAnalyzer.swift in Sources */,
+				AA00000000000000000000C2 /* MotionActivityRecorder.swift in Sources */,
+				AA00000000000000000000D2 /* PersonalRanking.swift in Sources */,
+				AA00000000000000000000E2 /* RankingService.swift in Sources */,
+				AA00000000000000000000F2 /* RankingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -472,6 +510,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				E10000012F00000100AAA001 /* RideLaneSmokeTests.swift in Sources */,
+				AB00000000000000000000A2 /* RideIntegrityAnalyzerTests.swift in Sources */,
+				AB00000000000000000000B2 /* RankingServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -626,6 +666,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "バックグラウンドでもライド計測とナビを継続するため現在地を使用します。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "自転車走行と車移動を区別し、ランキングの不正を防ぐためにモーションデータを使用します。";
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -670,6 +711,7 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ライドログをヘルスケアに保存するために使用します。";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "バックグラウンドでもライド計測とナビを継続するため現在地を使用します。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "自転車ルート案内のため現在地を取得します。";
+				INFOPLIST_KEY_NSMotionUsageDescription = "自転車走行と車移動を区別し、ランキングの不正を防ぐためにモーションデータを使用します。";
 				INFOPLIST_KEY_UIBackgroundModes = location;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
