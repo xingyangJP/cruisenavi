@@ -477,4 +477,6 @@
 - 実機検証（2026-07-13）: Sign in with Apple 成功を確認（`ridelane` Auth に `apple.com` プロバイダのユーザー作成）。Firebase MCP のアクティブプロジェクトが別プロジェクト（`bizboard-8b2a8`）を指していたのを `ridelane` へ是正
 - opt-in ギャップ修正: `submitWorldRankingBestsIfNeeded` は「新規ライドで自己ベスト更新時」のみ発火するため、opt-in 前に記録済みの既存ベストが永久に未投稿になる問題を確認（Firestore 空・Cloud Function invocation ゼロで裏取り）。`NavigationDashboardViewModel.submitCurrentPersonalBests()` を追加し、世界タブを開いた時（`RankingView.loadWorldBoard`）に自己ベストを冪等投稿するよう修正。反チートで reject/ban されないよう「適格 + `validSampleRatio>=0.6`」の**検証可能なライドの中でのベスト**のみ投稿するガード付き（全体ベストがレガシーでも、整合性データ付き直近ライドがあれば拾う）
 - ポリシー判断: 整合性データの無い「真のレガシー過去ライド（ランキング機能以前の走行）」は世界ランキングに**反映しない（厳格維持）**でユーザー確定。生GPSを保持しないため後から検証データを再生成できず、緩めると偽の過去ベスト注入穴になるため。今後の新規ライド＋整合性データ付き直近ライドで盤面が埋まる方針
+- ランキング画面（Sign in with Apple / アカウント削除 UI）の未ローカライズ文言9件を `en.lproj`（英訳）/`ja.lproj`（恒等）に追加し、画面内日本語キー30個すべて英語対応（`plutil -lint` OK・`BUILD SUCCEEDED`）。`codex/dev` を push し `origin/main` へ fast-forward マージ
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.98` から `1.0.99` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.99` へ同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.97` から `1.0.98` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.98` へ同期。`BUILD SUCCEEDED` を確認

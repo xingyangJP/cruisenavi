@@ -734,7 +734,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.98;
+				MARKETING_VERSION = 1.0.99;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -779,7 +779,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.98;
+				MARKETING_VERSION = 1.0.99;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -810,7 +810,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.98;
+				MARKETING_VERSION = 1.0.99;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -839,7 +839,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.98;
+				MARKETING_VERSION = 1.0.99;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
