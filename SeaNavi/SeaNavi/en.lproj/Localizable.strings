@@ -299,3 +299,14 @@
 "%d〜%d文字。英数字・かな・漢字が使えます。" = "%d–%d characters. Letters, numbers, and CJK are allowed.";
 "登録する" = "Register";
 "ニックネームを登録" = "Register nickname";
+
+/* World ranking — Sign in with Apple / account deletion */
+"Appleでサインイン" = "Sign in with Apple";
+"Appleでサインインすると、世界ランキングに参加できます。位置情報の走行記録は公開されません。" = "Sign in with Apple to join the world ranking. Your GPS ride tracks are never made public.";
+"サインインできませんでした。時間をおいて再度お試しください。" = "Sign-in failed. Please try again later.";
+"記録は自動審査の完了後にランキングへ公開されます。" = "Your record appears on the ranking once automatic review completes.";
+"ランキングのアカウントを削除" = "Delete ranking account";
+"ランキングのアカウントを削除しますか?" = "Delete your ranking account?";
+"あなたの記録とアカウント情報が削除されます。この操作は取り消せません。" = "Your records and account information will be deleted. This can't be undone.";
+"削除する" = "Delete";
+"アカウントを削除できませんでした。再度サインインしてお試しください。" = "Couldn't delete your account. Please sign in again and retry.";
