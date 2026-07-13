@@ -37,6 +37,10 @@
 		E20000012F00000100BBB001 /* OnboardingWalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20000022F00000100BBB001 /* OnboardingWalkthroughView.swift */; };
 		F50000012F20000100AAA001 /* ../GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F50000032F20000100AAA001 /* ../GoogleService-Info.plist */; };
 		F50000022F20000100AAA001 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F50000052F20000100AAA001 /* FirebaseAnalytics */; };
+		F50000062F20000100AAA001 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F50000082F20000100AAA001 /* FirebaseFirestore */; };
+		F50000072F20000100AAA001 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F50000092F20000100AAA001 /* FirebaseAuth */; };
+		AA00000000000000000000K2 /* FirestoreWorldRankingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000K1 /* FirestoreWorldRankingService.swift */; };
+		AA00000000000000000000L2 /* AppleSignInRankingIdentityProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000L1 /* AppleSignInRankingIdentityProvider.swift */; };
 		AA00000000000000000000A2 /* RideLocationSample.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000A1 /* RideLocationSample.swift */; };
 		AA00000000000000000000B2 /* RideIntegrityAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000B1 /* RideIntegrityAnalyzer.swift */; };
 		AA00000000000000000000C2 /* MotionActivityRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000C1 /* MotionActivityRecorder.swift */; };
@@ -107,6 +111,8 @@
 		AA00000000000000000000H1 /* RankingProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RankingProfile.swift; path = ../Sources/Models/RankingProfile.swift; sourceTree = SOURCE_ROOT; };
 		AA00000000000000000000I1 /* WorldRankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorldRankingService.swift; path = ../Sources/Services/Ranking/WorldRankingService.swift; sourceTree = SOURCE_ROOT; };
 		AA00000000000000000000J1 /* MockWorldRankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MockWorldRankingService.swift; path = ../Sources/Services/Ranking/MockWorldRankingService.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000K1 /* FirestoreWorldRankingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FirestoreWorldRankingService.swift; path = ../Sources/Services/Ranking/FirestoreWorldRankingService.swift; sourceTree = SOURCE_ROOT; };
+		AA00000000000000000000L1 /* AppleSignInRankingIdentityProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleSignInRankingIdentityProvider.swift; path = ../Sources/Services/Ranking/AppleSignInRankingIdentityProvider.swift; sourceTree = SOURCE_ROOT; };
 		AB00000000000000000000C1 /* NicknameValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NicknameValidatorTests.swift; sourceTree = "<group>"; };
 		AB00000000000000000000D1 /* MockWorldRankingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockWorldRankingServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -125,6 +131,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F50000022F20000100AAA001 /* FirebaseAnalytics in Frameworks */,
+				F50000062F20000100AAA001 /* FirebaseFirestore in Frameworks */,
+				F50000072F20000100AAA001 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +264,8 @@
 				AA00000000000000000000G1 /* RankingIdentityProviding.swift */,
 				AA00000000000000000000I1 /* WorldRankingService.swift */,
 				AA00000000000000000000J1 /* MockWorldRankingService.swift */,
+				AA00000000000000000000K1 /* FirestoreWorldRankingService.swift */,
+				AA00000000000000000000L1 /* AppleSignInRankingIdentityProvider.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -386,6 +396,7 @@
 				D35EAC722EBF176E0093DFC9 /* Sources */,
 				D35EAC732EBF176E0093DFC9 /* Frameworks */,
 				D35EAC742EBF176E0093DFC9 /* Resources */,
+				F5B111D02F30000100AAA001 /* Stamp build number (Release) */,
 			);
 			buildRules = (
 			);
@@ -397,6 +408,8 @@
 			name = RideLane;
 			packageProductDependencies = (
 				F50000052F20000100AAA001 /* FirebaseAnalytics */,
+				F50000082F20000100AAA001 /* FirebaseFirestore */,
+				F50000092F20000100AAA001 /* FirebaseAuth */,
 			);
 			productName = SeaNavi;
 			productReference = D35EAC762EBF176E0093DFC9 /* RideLane.app */;
@@ -484,6 +497,24 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		F5B111D02F30000100AAA001 /* Stamp build number (Release) */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Stamp build number (Release)";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Auto build number for TestFlight/App Store uploads.\n# Only Release (Archive) builds get a fresh, unique, monotonic CFBundleVersion.\n# Debug builds keep CURRENT_PROJECT_VERSION so day-to-day dev is unaffected.\nif [ \"${CONFIGURATION}\" != \"Release\" ]; then\n  echo \"build-number stamp skipped for ${CONFIGURATION}\"\n  exit 0\nfi\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nif [ ! -f \"${PLIST}\" ]; then\n  echo \"warning: Info.plist not found at ${PLIST}; skipping build-number stamp\"\n  exit 0\nfi\nBUILD_NUMBER=\"$(date -u +%Y%m%d).$(date -u +%H%M%S)\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion ${BUILD_NUMBER}\" \"${PLIST}\" || /usr/libexec/PlistBuddy -c \"Add :CFBundleVersion string ${BUILD_NUMBER}\" \"${PLIST}\"\necho \"CFBundleVersion stamped: ${BUILD_NUMBER}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		D35EAC722EBF176E0093DFC9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -524,6 +555,8 @@
 				AA00000000000000000000H2 /* RankingProfile.swift in Sources */,
 				AA00000000000000000000I2 /* WorldRankingService.swift in Sources */,
 				AA00000000000000000000J2 /* MockWorldRankingService.swift in Sources */,
+				AA00000000000000000000K2 /* FirestoreWorldRankingService.swift in Sources */,
+				AA00000000000000000000L2 /* AppleSignInRankingIdentityProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -701,7 +734,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.96;
+				MARKETING_VERSION = 1.0.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -746,7 +779,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.96;
+				MARKETING_VERSION = 1.0.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNavi;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -777,7 +810,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.96;
+				MARKETING_VERSION = 1.0.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -806,7 +839,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.96;
+				MARKETING_VERSION = 1.0.98;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xerographix.SeaNaviTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -868,6 +901,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		F50000082F20000100AAA001 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		F50000092F20000100AAA001 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F50000042F20000100AAA001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -66,6 +66,30 @@ service cloud.firestore {
       return metric == 'topSpeed' ? 90.0 : 2000.0;
     }
 
+    // Shape/range validation for a PRIVATE on-device integrity record
+    // (rankingSubmissions/{uid}/rides/{rideId}). These fields are the ones functions/src/index.ts
+    // cross-checks the public entry against. They are client-supplied and therefore UNTRUSTED —
+    // the authoritative anti-cheat is still the §4.4 Function (which can ban on mismatch); this
+    // only rejects structurally bad records at the boundary. `verified`/`region`/`country` are NOT
+    // valid here (that is public-entry, server-only territory).
+    function isValidIntegrityRecord(data) {
+      return
+           data.keys().hasAll(['metric', 'value', 'effectiveDistance', 'maxSustainedSpeed',
+                               'validSampleRatio', 'isRankingEligible'])
+        && data.keys().hasOnly(['metric', 'value', 'effectiveDistance', 'maxSustainedSpeed',
+                                'validSampleRatio', 'isRankingEligible', 'activityBreakdown',
+                                'achievedAt'])
+        && isAllowedMetric(data.metric)
+        && data.value is number && data.value >= 0 && data.value <= maxValueFor(data.metric)
+        && data.effectiveDistance is number && data.effectiveDistance >= 0
+        && data.maxSustainedSpeed is number && data.maxSustainedSpeed >= 0
+        && data.validSampleRatio is number && data.validSampleRatio >= 0 && data.validSampleRatio <= 1
+        && data.isRankingEligible is bool
+        && (!('activityBreakdown' in data) || data.activityBreakdown is map)
+        && (!('achievedAt' in data)
+            || (data.achievedAt is timestamp && data.achievedAt <= request.time));
+    }
+
     // A moderation/ban record for this uid (written ONLY by the trusted server via
     // the Admin SDK, in a collection the client cannot read/write/delete — it falls
     // under the default-deny catch-all). Its presence hard-blocks (re)submission, so
@@ -201,6 +225,25 @@ service cloud.firestore {
       // isBanned(). A flagged user who deletes and recreates is blocked at create.
       allow delete: if request.auth != null
                     && entry == request.auth.uid;
+    }
+
+    // ---- Private on-device integrity records ---------------------------
+    // rankingSubmissions/{uid}/rides/{rideId}: the client writes its own anti-cheat summary here
+    // BEFORE writing the public leaderboard entry, so the §4.4 Cloud Function (Admin SDK, bypasses
+    // rules) can cross-check the public value against it. STRICTLY owner-scoped: a client can only
+    // read/write records under its OWN uid, never another user's. Not publicly readable (no public
+    // board surface), and never carries verified/region/country. This path is what makes live
+    // verification possible — without it the Function rejects every entry ("integrity-record-missing")
+    // and the public board stays permanently empty.
+    match /rankingSubmissions/{uid}/rides/{rideId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      allow create, update: if request.auth != null
+                            && request.auth.uid == uid
+                            && !isBanned(request.auth.uid)
+                            && isValidIntegrityRecord(request.resource.data);
+
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     // ---- Default deny --------------------------------------------------

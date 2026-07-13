@@ -8,6 +8,10 @@ struct RankingView: View {
     @State private var showingNicknameSheet = false
     @State private var worldBoard: WorldRankingBoard?
     @State private var isLoadingWorld = false
+    @State private var isSigningIn = false
+    @State private var signInError: String?
+    @State private var showingDeleteConfirm = false
+    @State private var isDeleting = false
 
     var body: some View {
         NavigationStack {
@@ -187,10 +191,71 @@ struct RankingView: View {
 
     @ViewBuilder
     private var worldContent: some View {
-        if viewModel.rankingProfile == nil {
+        if viewModel.rankingRequiresSignIn {
+            signInOptInCard
+        } else if viewModel.rankingProfile == nil {
             nicknameOptInCard
         } else {
             worldLeaderboard
+        }
+    }
+
+    // Sign in with Apple gate. The live board requires `request.auth != null` (firestore.rules), so
+    // identity is established here before any nickname registration, fetch, or submit (plan §5.4).
+    private var signInOptInCard: some View {
+        GlassCard {
+            VStack(spacing: 12) {
+                Image(systemName: "globe")
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundStyle(Color.aquaTeal)
+                Text("世界ランキングに参加")
+                    .font(.headline)
+                    .foregroundStyle(Color.citrusPrimaryText)
+                Text("Appleでサインインすると、世界ランキングに参加できます。位置情報の走行記録は公開されません。")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .multilineTextAlignment(.center)
+
+                if let signInError {
+                    Text(signInError)
+                        .font(.caption)
+                        .foregroundStyle(Color.citrusOrange)
+                        .multilineTextAlignment(.center)
+                }
+
+                Button {
+                    Task { await signIn() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSigningIn {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "applelogo")
+                        }
+                        Text("Appleでサインイン")
+                            .font(.subheadline.bold())
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.black, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .disabled(isSigningIn)
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        }
+    }
+
+    private func signIn() async {
+        signInError = nil
+        isSigningIn = true
+        defer { isSigningIn = false }
+        do {
+            _ = try await viewModel.signInForWorldRanking()
+        } catch {
+            signInError = L10n.tr("サインインできませんでした。時間をおいて再度お試しください。")
         }
     }
 
@@ -232,7 +297,10 @@ struct RankingView: View {
 
     @ViewBuilder
     private var worldLeaderboard: some View {
-        mockDataBanner
+        // Only shown while the board is still synthesized (mock). Live Firestore data hides it.
+        if worldBoard?.isMockData == true {
+            mockDataBanner
+        }
 
         if selectedMetric == .topSpeed {
             Text("安全第一。速度記録は下り区間などを含みます。無理な走行はしないでください。")
@@ -244,6 +312,12 @@ struct RankingView: View {
 
         if let board = worldBoard {
             worldBoardCard(board)
+            if !board.isMockData {
+                Text("記録は自動審査の完了後にランキングへ公開されます。")
+                    .font(.caption2)
+                    .foregroundStyle(Color.citrusSecondaryText)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
         } else {
             GlassCard {
                 HStack(spacing: 10) {
@@ -255,6 +329,48 @@ struct RankingView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
             }
+        }
+
+        accountManagementFooter
+    }
+
+    // App Store 5.1.1(v): a signed-in user must be able to delete their account in-app. Deletes the
+    // remote leaderboard entries + Firebase user, then clears the local profile.
+    private var accountManagementFooter: some View {
+        Button(role: .destructive) {
+            showingDeleteConfirm = true
+        } label: {
+            if isDeleting {
+                ProgressView()
+            } else {
+                Text("ランキングのアカウントを削除")
+                    .font(.caption)
+            }
+        }
+        .disabled(isDeleting)
+        .padding(.top, 4)
+        .confirmationDialog(
+            "ランキングのアカウントを削除しますか?",
+            isPresented: $showingDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("削除する", role: .destructive) {
+                Task { await deleteAccount() }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("あなたの記録とアカウント情報が削除されます。この操作は取り消せません。")
+        }
+    }
+
+    private func deleteAccount() async {
+        isDeleting = true
+        defer { isDeleting = false }
+        do {
+            try await viewModel.deleteWorldRankingAccount()
+            worldBoard = nil
+        } catch {
+            signInError = L10n.tr("アカウントを削除できませんでした。再度サインインしてお試しください。")
         }
     }
 
@@ -358,6 +474,9 @@ struct RankingView: View {
     private func loadWorldBoard() async {
         guard viewModel.rankingProfile != nil else { return }
         isLoadingWorld = true
+        // Publish the current personal best (idempotent) so an already-opted-in user's existing best
+        // is submitted even without a new PR ride, then read the board back.
+        await viewModel.submitCurrentPersonalBests()
         worldBoard = await viewModel.worldRankingBoard(for: selectedMetric)
         isLoadingWorld = false
     }

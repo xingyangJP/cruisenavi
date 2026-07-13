@@ -450,3 +450,31 @@
 - ビルド確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'generic/platform=iOS Simulator' build` が `BUILD SUCCEEDED`
 - テスト確認: `xcodebuild -project SeaNavi/RideLane.xcodeproj -scheme SeaNavi -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' test -derivedDataPath /tmp/RideLaneL10nTests` を実行し `RideLaneSmokeTests` 12件 PASS（`TEST SUCCEEDED`）を確認
 - 実機確認は未実施。端末言語を日本語/英語で切り替え、Home・目的地検索・ナビ開始音声・危険音声・ログ詳細共有文面を確認する必要あり
+- 多言語化の残り調査を実施し、英語環境で日本語が残る主因を `LocationService` の未登録翻訳キーと `Harbor.sample` の固定スポット名に絞り込み
+- `LocationService` の追跡状態文言（`実GPS`, `位置情報の許可待ち`, `GPSアクティブ` など）を `ja/en Localizable.strings` に追加し、英語環境でも生の日本語キーが露出しないよう修正
+- `Harbor.sample` のスポット名を `L10n.tr(...)` 経由に変更し、主要サンプルスポット名の英語表示を `Localizable.strings` に追加
+
+- UIの静的キー残件として `はじめてガイド` / `スキップ` / `自動記録中` / `目的地再設定` も `ja/en Localizable.strings` に追加し、英語端末で日本語固定表示にならないよう修正
+- 既存お気に入り互換を維持するため、FavoriteDestinationStore の同一判定を名前ID依存から座標一致へ寄せ、旧日本語名で保存済みのスポットも英語表示・重複防止が効くよう補正
+
+## 2026-07-12
+- ワールドランキング本番化（TestFlight ライブ配信準備）: Mock → Firebase/Firestore + Sign in with Apple へ切替（`RANKING_GOLIVE_CHECKLIST.md` Step 2/3/8）
+- Xcode: `FirebaseFirestore` / `FirebaseAuth` を SPM 製品として追加（既存 `FirebaseAnalytics` と同一 `firebase-ios-sdk` パッケージ）、`RideLane.entitlements` に Sign in with Apple（`com.apple.developer.applesignin`）を追加
+- 新規 `FirestoreWorldRankingService`（`WorldRankingService` 準拠）: `verified==true` の Top-N 読み取り（複合インデックス使用）、自分の行のピン留め、submit 時に整合性レコード→公開エントリの順で書き込み
+- 新規 `AppleSignInRankingIdentityProvider`（`RankingAuthProviding` 準拠）: Sign in with Apple → Firebase Auth uid、`ASAuthorizationController` ブリッジ実装、アカウント削除（App Store 5.1.1(v)）
+- 整合性の必須連携: `submitBest` を拡張し、`rankingSubmissions/{uid}/rides/{rideId}` にオンデバイス整合性サマリ（metric/value/effectiveDistance/maxSustainedSpeed/validSampleRatio/isRankingEligible/activityBreakdown）を書き込み。Cloud Function（§4.4）がこれを照合し `verified` を付与
+- **ルールのギャップ修正**: `firestore.rules` に `rankingSubmissions/{uid}/rides/{rideId}` の所有者限定 create/update を追加（`isValidIntegrityRecord` バリデーション）。これが無いと Function が全エントリを reject し公開盤面が永久に空になる不整合を解消
+- metric セグメントはデプロイ済みルール/Function に合わせ `longestDistance` / `topSpeed` で統一（チェックリスト §3.0 の `distance` は stale として不採用）
+- `NavigationDashboardViewModel`: ライド完了フローで整合性計算後、opt-in 済み・サインイン済み・ランキング適格・自己ベスト更新時のみ metric 別に submit。`signInForWorldRanking` / `deleteWorldRankingAccount` / `rankingRequiresSignIn` を公開
+- `RankingView`: 世界タブに Sign in with Apple 導線を追加（ニックネーム登録の前段）、実データ時は「モックデータ」バナー非表示、審査中の注記、アカウント削除（確認ダイアログ）を追加
+- `SeaNaviApp`: `NavigationDashboardViewModel` の生成に `AppleSignInRankingIdentityProvider()` + `FirestoreWorldRankingService()` を注入（1コミットで revert 可能な単一切替点）。両者は Firebase 未プロビジョニング時も graceful degrade（盤面空 / opt-in「利用不可」）でクラッシュしない
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.96` から `1.0.97` に更新し、Home の `ver` 表示デフォルト値と README 群バージョン表記を `1.0.97` へ同期
+- 残作業（手動・私が代行不可）: Firebase Console で Firestore DB 作成（`asia-northeast1`・不可逆）/ Auth プロバイダ有効化、Apple Developer で Sign in with Apple 構成（Services ID/.p8）、Blaze 課金、`scripts/fb-deploy.sh` で rules・indexes・functions デプロイ、Xcode でアーカイブ→App Store Connect/TestFlight アップロード
+- バックエンド構築（実施済み）: Firestore DB を `asia-northeast1`（東京・Delete Protection 有効）で作成済み・Blaze 有効を CLI で確認。`scripts/fb-deploy.sh` 経由で `firestore:rules` / `firestore:indexes` / `functions`（`validateLeaderboardEntry` @ asia-northeast1）を本番デプロイ成功
+- functions 初回デプロイは API 初有効化直後の IAM 伝播で 403（`iam.serviceAccounts.ActAs`）となったため、約3分後に再実行して成功。Artifact Registry のクリーンアップポリシー（3日）を設定しコスト増を抑止
+- TestFlight 向けビルド番号自動化: app ターゲットに Release 限定の Run Script ビルドフェーズ（`Stamp build number (Release)`）を追加し、`CFBundleVersion` を `YYYYMMDD.HHMMSS`（UTC）で自動スタンプ。アーカイブ毎に一意・単調増加。Debug は `CURRENT_PROJECT_VERSION=1` のまま
+- 検証: Firestore/Auth 込みで `BUILD SUCCEEDED`、`RideLaneSmokeTests` `TEST SUCCEEDED`（失敗0）。Release ビルドで `CFBundleVersion=20260712.123059` / `CFBundleShortVersionString=1.0.97` のスタンプ適用を実機成果物で確認
+- 実機検証（2026-07-13）: Sign in with Apple 成功を確認（`ridelane` Auth に `apple.com` プロバイダのユーザー作成）。Firebase MCP のアクティブプロジェクトが別プロジェクト（`bizboard-8b2a8`）を指していたのを `ridelane` へ是正
+- opt-in ギャップ修正: `submitWorldRankingBestsIfNeeded` は「新規ライドで自己ベスト更新時」のみ発火するため、opt-in 前に記録済みの既存ベストが永久に未投稿になる問題を確認（Firestore 空・Cloud Function invocation ゼロで裏取り）。`NavigationDashboardViewModel.submitCurrentPersonalBests()` を追加し、世界タブを開いた時（`RankingView.loadWorldBoard`）に自己ベストを冪等投稿するよう修正。反チートで reject/ban されないよう「適格 + `validSampleRatio>=0.6`」の**検証可能なライドの中でのベスト**のみ投稿するガード付き（全体ベストがレガシーでも、整合性データ付き直近ライドがあれば拾う）
+- ポリシー判断: 整合性データの無い「真のレガシー過去ライド（ランキング機能以前の走行）」は世界ランキングに**反映しない（厳格維持）**でユーザー確定。生GPSを保持しないため後から検証データを再生成できず、緩めると偽の過去ベスト注入穴になるため。今後の新規ライド＋整合性データ付き直近ライドで盤面が埋まる方針
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.97` から `1.0.98` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.98` へ同期。`BUILD SUCCEEDED` を確認

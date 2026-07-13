@@ -228,6 +228,138 @@ final class NavigationDashboardViewModel: ObservableObject {
         )
     }
 
+    /// True when the live board requires a real sign-in the user has not completed. Always false for
+    /// the anonymous/mock path (which never requires sign-in), so the offline UI is unchanged.
+    var rankingRequiresSignIn: Bool {
+        guard let auth = rankingIdentityProvider as? RankingAuthProviding else { return false }
+        return !auth.isSignedIn
+    }
+
+    /// Sign in with Apple for the world-ranking opt-in. No-op success for non-auth providers.
+    /// Throws so the UI can show a non-fatal "unavailable" message; on success republishes so the
+    /// opt-in state (`rankingRequiresSignIn`) refreshes.
+    @discardableResult
+    func signInForWorldRanking() async throws -> Bool {
+        guard let auth = rankingIdentityProvider as? RankingAuthProviding else { return true }
+        _ = try await auth.signIn()
+        objectWillChange.send()
+        return true
+    }
+
+    /// Delete the world-ranking account (App Store 5.1.1(v)): removes the remote entries + Firebase
+    /// user, then clears the local profile so the UI returns to the opt-in state.
+    func deleteWorldRankingAccount() async throws {
+        if let auth = rankingIdentityProvider as? RankingAuthProviding {
+            try await auth.deleteAccount()
+        }
+        rankingProfileStore.clear()
+        rankingProfile = nil
+    }
+
+    /// Publish the user's CURRENT personal best for each metric to the world backend. Fixes the
+    /// opt-in gap: `submitWorldRankingBestsIfNeeded` only fires on a NEW personal-best ride, so a
+    /// user who opts in AFTER their best ride would otherwise never appear on the board. Call this
+    /// when the world board opens and right after opt-in.
+    ///
+    /// Anti-cheat safety: only submits rides the server would ACCEPT — explicitly ranking-eligible
+    /// with a sufficient valid-GPS-sample ratio — so we never accumulate rejects (which the §4.4
+    /// Function turns into a ban). Idempotent: re-submitting an unchanged best writes identical data,
+    /// which the Function detects as its own no-op (no re-verify, no reject).
+    func submitCurrentPersonalBests() async {
+        guard rankingProfile != nil else { return }
+        if let auth = rankingIdentityProvider as? RankingAuthProviding, !auth.isSignedIn { return }
+        let accountId = rankingIdentityProvider.accountId
+        let nickname = rankingProfile?.nickname ?? ""
+        guard !accountId.isEmpty, !nickname.isEmpty else { return }
+
+        // Only rides the server can VERIFY: explicitly ranking-eligible with a sufficient valid-GPS
+        // ratio. Legacy rides recorded before the integrity analyzer (validSampleRatio == nil) are
+        // excluded — they can never be verified (raw GPS isn't retained to recompute), so submitting
+        // them would only pile up rejects (and eventually ban the uid).
+        let minRatio = RideIntegrityConfig.default.minValidSampleRatio
+        let verifiable = voyageLogs.filter { log in
+            log.isRankingEligible == true && (log.validSampleRatio ?? 0) >= minRatio
+        }
+        guard !verifiable.isEmpty else { return }
+
+        for metric in RankingMetric.allCases {
+            // Best VERIFIABLE ride for this metric — not the overall personal best, which may be a
+            // legacy ride. This way a single integrity-backed ride still gets the user onto the board.
+            let candidates: [(log: VoyageLog, value: Double)] = verifiable.compactMap { log in
+                switch metric {
+                case .longestDistance:
+                    let value = log.effectiveDistance ?? log.distance
+                    return value > 0 ? (log, value) : nil
+                case .topSpeed:
+                    guard let value = log.maxSustainedSpeed, value > 0 else { return nil }
+                    return (log, value)
+                }
+            }
+            guard let best = candidates.max(by: { $0.value < $1.value }) else { continue }
+            let log = best.log
+            let integrity = RideIntegrityResult(
+                maxSustainedSpeed: log.maxSustainedSpeed ?? 0,
+                effectiveDistance: log.effectiveDistance ?? log.distance,
+                validSampleRatio: log.validSampleRatio ?? minRatio,
+                isRankingEligible: true,
+                activityBreakdown: log.activityBreakdown ?? [:]
+            )
+            await worldRankingService.submitBest(
+                metric: metric,
+                value: best.value,
+                accountId: accountId,
+                nickname: nickname,
+                rideId: "\(log.id.uuidString):\(metric.firestoreMetricId)",
+                integrity: integrity,
+                achievedAt: log.startTime
+            )
+        }
+    }
+
+    /// Submit self-best updates for any metric this eligible ride improved. The live
+    /// `FirestoreWorldRankingService` writes the private integrity record + public entry (the entry
+    /// stays invisible until the §4.4 Cloud Function verifies it); the mock is a no-op. Only opted-in,
+    /// signed-in, ranking-eligible rides submit — anything else returns without a network write.
+    private func submitWorldRankingBestsIfNeeded(
+        log: VoyageLog,
+        integrity: RideIntegrityResult,
+        previousBestDistance: Double,
+        previousBestSpeed: Double
+    ) async {
+        guard rankingProfile != nil, integrity.isRankingEligible else { return }
+        if let auth = rankingIdentityProvider as? RankingAuthProviding, !auth.isSignedIn { return }
+
+        let accountId = rankingIdentityProvider.accountId
+        let nickname = rankingProfile?.nickname ?? ""
+        guard !accountId.isEmpty, !nickname.isEmpty else { return }
+
+        let distanceValue = integrity.effectiveDistance
+        if distanceValue > previousBestDistance, distanceValue > 0 {
+            await worldRankingService.submitBest(
+                metric: .longestDistance,
+                value: distanceValue,
+                accountId: accountId,
+                nickname: nickname,
+                rideId: "\(log.id.uuidString):\(RankingMetric.longestDistance.firestoreMetricId)",
+                integrity: integrity,
+                achievedAt: log.startTime
+            )
+        }
+
+        let speedValue = integrity.maxSustainedSpeed
+        if speedValue > previousBestSpeed, speedValue > 0 {
+            await worldRankingService.submitBest(
+                metric: .topSpeed,
+                value: speedValue,
+                accountId: accountId,
+                nickname: nickname,
+                rideId: "\(log.id.uuidString):\(RankingMetric.topSpeed.firestoreMetricId)",
+                integrity: integrity,
+                achievedAt: log.startTime
+            )
+        }
+    }
+
     func setHealthSyncEnabled(_ enabled: Bool) {
         healthSyncEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: Self.healthSyncEnabledKey)
@@ -721,6 +853,14 @@ final class NavigationDashboardViewModel: ObservableObject {
             )
             self.recalculateGrowthWidgets()
             self.persistVoyageLogs()
+
+            // World ranking: submit any self-best this eligible ride set (live backend only; mock no-op).
+            await self.submitWorldRankingBestsIfNeeded(
+                log: enrichedLog,
+                integrity: integrity,
+                previousBestDistance: previousBestDistance,
+                previousBestSpeed: previousBestSpeed
+            )
 
             if self.healthSyncEnabled {
                 self.rideLogHealthStatuses[enrichedLog.id] = .syncing

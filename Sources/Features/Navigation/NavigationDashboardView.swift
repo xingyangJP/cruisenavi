@@ -363,7 +363,7 @@ struct NavigationDashboardView: View {
     }
 
     private var appVersionLabel: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.96"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.98"
         return "ver\(version)"
     }
 

@@ -35,9 +35,13 @@ struct MockWorldRankingService: WorldRankingService {
         metric: RankingMetric,
         value: Double,
         accountId: String,
-        nickname: String
+        nickname: String,
+        rideId: String,
+        integrity: RideIntegrityResult,
+        achievedAt: Date
     ) async {
-        // Mock: nothing is transmitted. A live implementation would upsert entries/{accountId}.
+        // Mock: nothing is transmitted. The live FirestoreWorldRankingService writes the private
+        // integrity record + the public entry (RANKING_GOLIVE_CHECKLIST §6).
     }
 
     /// Synchronous core so tests can assert without async plumbing. Deterministic.

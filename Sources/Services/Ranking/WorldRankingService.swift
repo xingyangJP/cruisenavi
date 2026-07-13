@@ -50,10 +50,24 @@ protocol WorldRankingService {
     ) async -> WorldRankingBoard
 
     /// Submit the user's personal best (self-best updates only). No-op / logs for the mock.
+    ///
+    /// The live Firestore implementation writes TWO documents (RANKING_GOLIVE_CHECKLIST §6 +
+    /// functions/src/index.ts): first the private on-device integrity record at
+    /// `rankingSubmissions/{uid}/rides/{rideId}` (so the §4.4 Cloud Function can cross-check the
+    /// public value), then the public entry at `leaderboards/{metricId}/entries/{uid}`. The entry
+    /// stays invisible on the public board until the Function stamps `verified == true`.
+    /// - Parameters:
+    ///   - rideId: a stable, single-segment id for this submission (no "/"). Must match the id of
+    ///     the integrity record written for the SAME metric.
+    ///   - integrity: the on-device anti-cheat summary the server validates the value against.
+    ///   - achievedAt: when the ride happened (bounded to a sane window by rules + the Function).
     func submitBest(
         metric: RankingMetric,
         value: Double,
         accountId: String,
-        nickname: String
+        nickname: String,
+        rideId: String,
+        integrity: RideIntegrityResult,
+        achievedAt: Date
     ) async
 }

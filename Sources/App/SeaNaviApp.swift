@@ -25,10 +25,16 @@ struct SeaNaviApp: App {
         }
         let weatherService = ChainedWeatherService(providers: weatherProviders)
 
+        // World ranking backend: live Sign in with Apple + Firestore (RANKING_GOLIVE_CHECKLIST §8).
+        // Rollback = revert this single edit back to the defaults (anonymous identity + mock service).
+        // Both degrade gracefully if the Firebase backend is not yet provisioned (empty board / the
+        // opt-in shows "unavailable") — nothing crashes.
         let viewModel = NavigationDashboardViewModel(
             locationService: service,
             weatherService: weatherService,
-            rideLogSyncService: HealthWorkoutSyncService()
+            rideLogSyncService: HealthWorkoutSyncService(),
+            rankingIdentityProvider: AppleSignInRankingIdentityProvider(),
+            worldRankingService: FirestoreWorldRankingService()
         )
         _dashboardViewModel = StateObject(wrappedValue: viewModel)
     }

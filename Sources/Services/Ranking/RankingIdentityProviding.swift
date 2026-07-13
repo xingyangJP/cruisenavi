@@ -15,6 +15,27 @@ protocol RankingIdentityProviding {
     var accountId: String { get }
 }
 
+/// Capability add-on for identity providers backed by a real sign-in (Sign in with Apple →
+/// Firebase Auth). The live `AppleSignInRankingIdentityProvider` conforms; the anonymous provider
+/// deliberately does NOT, so the world-ranking UI treats "no auth provider" as "sign-in not
+/// required" and the offline mock path is unchanged.
+///
+/// Reads/writes on the live board require `request.auth != null` (firestore.rules), so the UI must
+/// drive `signIn()` before fetching or submitting. `deleteAccount()` satisfies App Store 5.1.1(v).
+protocol RankingAuthProviding: RankingIdentityProviding {
+    /// True once a real account session exists (Firebase `currentUser != nil`).
+    var isSignedIn: Bool { get }
+
+    /// Presents Sign in with Apple, exchanges the credential with Firebase Auth, and returns the
+    /// Firebase `uid`. Throws (non-fatally) so the opt-in flow can show an "unavailable" message
+    /// while `accountId` keeps returning the anonymous fallback.
+    @discardableResult
+    func signIn() async throws -> String
+
+    /// Deletes the user's leaderboard entries (best-effort) and the Firebase user, then signs out.
+    func deleteAccount() async throws
+}
+
 /// Local anonymous identity: a persisted random UUID. Unique per install, stable across launches,
 /// and fully offline. Intended to be swapped for a Sign in with Apple provider before the world
 /// ranking is connected to a live backend.
