@@ -61,6 +61,10 @@ protocol WorldRankingService {
     ///     the integrity record written for the SAME metric.
     ///   - integrity: the on-device anti-cheat summary the server validates the value against.
     ///   - achievedAt: when the ride happened (bounded to a sane window by rules + the Function).
+    /// - Returns: true when the submission was handed to the backend (both writes succeeded for the
+    ///   live implementation; trivially true for the mock). Callers that need at-least-once
+    ///   semantics (e.g. the one-time legacy backfill) key their "done" flag off this.
+    @discardableResult
     func submitBest(
         metric: RankingMetric,
         value: Double,
@@ -69,5 +73,26 @@ protocol WorldRankingService {
         rideId: String,
         integrity: RideIntegrityResult,
         achievedAt: Date
-    ) async
+    ) async -> Bool
+
+    /// Fetch the next page of verified rows strictly after `last` (cursor = value + entry id),
+    /// ordered by value descending — the infinite-scroll continuation of `fetchLeaderboard`.
+    /// Returned ranks continue from `last.rank`. An empty array means the board is exhausted
+    /// (the mock always returns [] — its board is fully synthesized in the first page).
+    func fetchMoreEntries(
+        metric: RankingMetric,
+        after last: WorldRankingEntry,
+        limit: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry]
+
+    /// The rows immediately around the user's own entry (±`radius` by rank, own row included),
+    /// sorted by rank — the "neighborhood block" shown when the user sits far below the visible
+    /// top of the board, so they can see who is directly above/below them.
+    func fetchNeighborhood(
+        metric: RankingMetric,
+        around own: WorldRankingEntry,
+        radius: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry]
 }

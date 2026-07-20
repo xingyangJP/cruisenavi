@@ -61,17 +61,42 @@ final class RideIntegrityAnalyzerTests: XCTestCase {
         XCTAssertGreaterThan(result.maxSustainedSpeed, 0)
     }
 
-    func testHighSpeedUnknownActivityExcludedAsVehicle() {
-        // §4.2 vehicle-suspicion: a sustained 60 km/h ride that CoreMotion never labelled
-        // `.automotive` (no segments => `.unknown`) must still be excluded, because 60 km/h cruising
-        // without confirmed cycling is treated as vehicle travel. Otherwise a car ride would pass.
+    func testShortHighSpeedBurstIsKept() {
+        // §4.2 (loosened): a 6-second 60 km/h burst with no motion data (`.unknown`) is a
+        // plausible descent, NOT vehicle evidence. Only sustained cruising is excluded.
         let samples = (0...6).map { index in
+            sample(secondsFromStart: Double(index), eastMeters: Double(index) * 17, speedKmh: 60)
+        }
+        let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: [])
+        XCTAssertEqual(result.validSampleRatio, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(result.maxSustainedSpeed, 60, accuracy: 0.5)
+        XCTAssertTrue(result.isRankingEligible)
+    }
+
+    func testSustainedVehicleCruiseExcluded() {
+        // 120 seconds continuously above 50 km/h with no `.cycling` confirmation reads as vehicle
+        // travel: cars hold that for minutes, a bike cannot without a confirmed descent.
+        let samples = (0...120).map { index in
             sample(secondsFromStart: Double(index), eastMeters: Double(index) * 17, speedKmh: 60)
         }
         let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: [])
         XCTAssertEqual(result.validSampleRatio, 0, accuracy: 0.0001)
         XCTAssertEqual(result.maxSustainedSpeed, 0, accuracy: 0.0001)
         XCTAssertFalse(result.isRankingEligible)
+    }
+
+    func testSustainedCruiseConfirmedCyclingIsKept() {
+        // The same 120-second 60 km/h run under a `.cycling` segment (long confirmed descent)
+        // must stay valid — CoreMotion's positive confirmation overrides the cruise rule.
+        let samples = (0...120).map { index in
+            sample(secondsFromStart: Double(index), eastMeters: Double(index) * 17, speedKmh: 60)
+        }
+        let segments = [
+            RideActivitySegment(startTime: base, endTime: base.addingTimeInterval(130), kind: .cycling, confidence: 2)
+        ]
+        let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: segments)
+        XCTAssertEqual(result.validSampleRatio, 1.0, accuracy: 0.0001)
+        XCTAssertTrue(result.isRankingEligible)
     }
 
     func testHighSpeedConfirmedCyclingIsKept() {
@@ -100,8 +125,10 @@ final class RideIntegrityAnalyzerTests: XCTestCase {
         XCTAssertEqual(result.maxSustainedSpeed, 0, accuracy: 0.0001)
     }
 
-    func testAutomotiveSegmentExcludedFromDistanceAndSpeed() {
-        // 10 samples, one per second. First 5 cycling (valid), last 5 automotive (invalid).
+    func testAutomotiveLabelAtBikeSpeedIsKept() {
+        // Handlebar-mounted phones systematically classify a genuine ride as `.automotive`
+        // (no pedaling body motion reaches the accelerometer). The label alone must NOT
+        // invalidate bike-plausible samples: 25 km/h under an automotive segment stays valid.
         let samples = (0..<10).map { index in
             sample(secondsFromStart: Double(index), eastMeters: Double(index) * 10, speedKmh: 25)
         }
@@ -110,13 +137,25 @@ final class RideIntegrityAnalyzerTests: XCTestCase {
             RideActivitySegment(startTime: base.addingTimeInterval(5), endTime: base.addingTimeInterval(20), kind: .automotive, confidence: 2)
         ]
         let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: segments)
-        // 5 valid of 10 => ratio 0.5.
-        XCTAssertEqual(result.validSampleRatio, 0.5, accuracy: 0.0001)
-        // Distance only across the valid cycling portion (indices 0..4 => 4 hops of 10m = 40m = 0.04km).
-        XCTAssertEqual(result.effectiveDistance, 0.04, accuracy: 0.005)
-        // Valid samples span indices 0..4 => 4 seconds >= 3s window, sustained 25.
+        XCTAssertEqual(result.validSampleRatio, 1.0, accuracy: 0.0001)
         XCTAssertEqual(result.maxSustainedSpeed, 25, accuracy: 0.5)
-        XCTAssertFalse(result.isRankingEligible) // ratio 0.5 < 0.6
+        XCTAssertTrue(result.isRankingEligible)
+        // The breakdown still records what CoreMotion reported, for display and future tuning.
+        XCTAssertEqual(result.activityBreakdown[RideActivityKind.automotive.rawValue] ?? 0, 0.5, accuracy: 0.1)
+    }
+
+    func testAutomotiveSustainedCruiseExcluded() {
+        // Automotive label + sustained 60 km/h cruising for 2 minutes: this is corroborated
+        // vehicle travel and must be excluded (the real anti-cheat case — driving a car).
+        let samples = (0...120).map { index in
+            sample(secondsFromStart: Double(index), eastMeters: Double(index) * 17, speedKmh: 60)
+        }
+        let segments = [
+            RideActivitySegment(startTime: base, endTime: base.addingTimeInterval(130), kind: .automotive, confidence: 2)
+        ]
+        let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: segments)
+        XCTAssertEqual(result.validSampleRatio, 0, accuracy: 0.0001)
+        XCTAssertFalse(result.isRankingEligible)
     }
 
     func testSanityCapExcludesImplausibleSample() {
@@ -139,18 +178,20 @@ final class RideIntegrityAnalyzerTests: XCTestCase {
         XCTAssertTrue(result.isRankingEligible)
     }
 
-    func testIneligibleWhenMostlyAutomotive() {
-        // 10 samples; automotive covers 6 of them => ratio 0.4 < 0.6.
+    func testMountedPhoneMisclassificationStaysEligible() {
+        // Regression for the 2026-07-20 field ride: 89% of a genuine 18.7 km/h average ride was
+        // labelled `.automotive` by CoreMotion (handlebar mount) and the whole ride was excluded.
+        // At bike-plausible speeds the label must not affect eligibility.
         let samples = (0..<10).map { index in
             sample(secondsFromStart: Double(index), eastMeters: Double(index) * 10, speedKmh: 25)
         }
         let segments = [
-            RideActivitySegment(startTime: base, endTime: base.addingTimeInterval(4), kind: .cycling, confidence: 2),
-            RideActivitySegment(startTime: base.addingTimeInterval(4), endTime: base.addingTimeInterval(20), kind: .automotive, confidence: 2)
+            RideActivitySegment(startTime: base, endTime: base.addingTimeInterval(1), kind: .cycling, confidence: 2),
+            RideActivitySegment(startTime: base.addingTimeInterval(1), endTime: base.addingTimeInterval(20), kind: .automotive, confidence: 2)
         ]
         let result = RideIntegrityAnalyzer.analyze(samples: samples, segments: segments)
-        XCTAssertEqual(result.validSampleRatio, 0.4, accuracy: 0.0001)
-        XCTAssertFalse(result.isRankingEligible)
+        XCTAssertEqual(result.validSampleRatio, 1.0, accuracy: 0.0001)
+        XCTAssertTrue(result.isRankingEligible)
     }
 
     func testEmptySamplesReturnsZeroResult() {

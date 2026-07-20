@@ -126,6 +126,93 @@ struct FirestoreWorldRankingService: WorldRankingService {
         )
     }
 
+    /// Infinite-scroll continuation: verified rows strictly after (`last.value`, `last.id`),
+    /// value descending. The explicit `documentID` (descending) order matches the implicit
+    /// `__name__` direction of the (verified ASC, value DESC) composite index, so this reuses the
+    /// same index and satisfies the same `verified == true` list rule as the first page. The id
+    /// component makes the cursor exact across value ties (a bare value cursor would skip them).
+    func fetchMoreEntries(
+        metric: RankingMetric,
+        after last: WorldRankingEntry,
+        limit: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry] {
+        guard let db, limit > 0 else { return [] }
+        do {
+            let snap = try await entries(for: metric, in: db)
+                .whereField("verified", isEqualTo: true)
+                .order(by: "value", descending: true)
+                .order(by: FieldPath.documentID(), descending: true)
+                .start(after: [last.value, last.id])
+                .limit(to: limit)
+                .getDocuments()
+            return snap.documents.enumerated().map { index, doc in
+                let d = doc.data()
+                return WorldRankingEntry(
+                    id: doc.documentID,
+                    rank: last.rank + index + 1,
+                    nickname: d["displayName"] as? String ?? "",
+                    value: d["value"] as? Double ?? 0,
+                    region: d["region"] as? String,
+                    isCurrentUser: doc.documentID == accountId
+                )
+            }
+        } catch {
+            #if DEBUG
+            print("FirestoreWorldRankingService.fetchMore failed: \(error)")
+            #endif
+            return []
+        }
+    }
+
+    /// Neighborhood block: the rows ranked just above own (next-larger values — fetched with the
+    /// exact REVERSE ordering of the page query, which Firestore serves from the same composite
+    /// index) plus the rows just below (reuses `fetchMoreEntries`). Ranks are derived from
+    /// `own.rank` by offset. Either half failing degrades to the other half + the own row.
+    func fetchNeighborhood(
+        metric: RankingMetric,
+        around own: WorldRankingEntry,
+        radius: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry] {
+        guard let db, radius > 0 else { return [own] }
+        var rows: [WorldRankingEntry] = [own]
+        do {
+            let above = try await entries(for: metric, in: db)
+                .whereField("verified", isEqualTo: true)
+                .order(by: "value")
+                .order(by: FieldPath.documentID())
+                .start(after: [own.value, own.id])
+                .limit(to: radius)
+                .getDocuments()
+            // Skip the user's own SERVER document: `own` is seeded from the LOCAL best, so when the
+            // verified server value differs (e.g. a backfilled ride excluded from the local best)
+            // the query would re-include the same account id and duplicate the row.
+            for (index, doc) in above.documents.filter({ $0.documentID != own.id }).enumerated() {
+                let d = doc.data()
+                rows.append(WorldRankingEntry(
+                    id: doc.documentID,
+                    rank: max(own.rank - index - 1, 1),
+                    nickname: d["displayName"] as? String ?? "",
+                    value: d["value"] as? Double ?? 0,
+                    region: d["region"] as? String,
+                    isCurrentUser: doc.documentID == accountId
+                ))
+            }
+        } catch {
+            #if DEBUG
+            print("FirestoreWorldRankingService.fetchNeighborhood(above) failed: \(error)")
+            #endif
+        }
+        rows.append(contentsOf: await fetchMoreEntries(
+            metric: metric,
+            after: own,
+            limit: radius,
+            accountId: accountId
+        ).filter { $0.id != own.id })
+        return rows.sorted { $0.rank < $1.rank }
+    }
+
     /// "1 + number of VERIFIED entries strictly greater than value". One count aggregation query,
     /// constrained to `verified == true` so it satisfies the list rules (and reuses the same index).
     private func rankOfVerified(greaterThan value: Double, in col: CollectionReference) async throws -> Int {
@@ -139,6 +226,7 @@ struct FirestoreWorldRankingService: WorldRankingService {
 
     // MARK: - Write — self-best updates only (cost minimization, §5.3)
 
+    @discardableResult
     func submitBest(
         metric: RankingMetric,
         value: Double,
@@ -147,9 +235,9 @@ struct FirestoreWorldRankingService: WorldRankingService {
         rideId: String,
         integrity: RideIntegrityResult,
         achievedAt: Date
-    ) async {
-        guard let db else { return }
-        guard !accountId.isEmpty, value > 0, !rideId.isEmpty, !rideId.contains("/") else { return }
+    ) async -> Bool {
+        guard let db else { return false }
+        guard !accountId.isEmpty, value > 0, !rideId.isEmpty, !rideId.contains("/") else { return false }
 
         let achievedTimestamp = Timestamp(date: achievedAt)
 
@@ -177,7 +265,7 @@ struct FirestoreWorldRankingService: WorldRankingService {
             #if DEBUG
             print("FirestoreWorldRankingService.submit integrity write failed: \(error)")
             #endif
-            return // without the integrity record the entry can never verify — don't write it.
+            return false // without the integrity record the entry can never verify — don't write it.
         }
 
         // 2. Public entry. EXACTLY the 5 client-writable keys (rules enforce hasOnly). merge:true so
@@ -196,6 +284,8 @@ struct FirestoreWorldRankingService: WorldRankingService {
             #if DEBUG
             print("FirestoreWorldRankingService.submit entry write failed: \(error)")
             #endif
+            return false
         }
+        return true
     }
 }

@@ -228,6 +228,36 @@ final class NavigationDashboardViewModel: ObservableObject {
         )
     }
 
+    /// Next page for the world board's infinite scroll (continuation of `worldRankingBoard`).
+    func fetchMoreWorldEntries(
+        metric: RankingMetric,
+        after last: WorldRankingEntry,
+        limit: Int = 50
+    ) async -> [WorldRankingEntry] {
+        let accountId = rankingProfile?.accountId ?? rankingIdentityProvider.accountId
+        return await worldRankingService.fetchMoreEntries(
+            metric: metric,
+            after: last,
+            limit: limit,
+            accountId: accountId
+        )
+    }
+
+    /// Rows around the user's own world rank (±radius) for the pinned neighborhood block.
+    func fetchWorldNeighborhood(
+        metric: RankingMetric,
+        around own: WorldRankingEntry,
+        radius: Int = 2
+    ) async -> [WorldRankingEntry] {
+        let accountId = rankingProfile?.accountId ?? rankingIdentityProvider.accountId
+        return await worldRankingService.fetchNeighborhood(
+            metric: metric,
+            around: own,
+            radius: radius,
+            accountId: accountId
+        )
+    }
+
     /// True when the live board requires a real sign-in the user has not completed. Always false for
     /// the anonymous/mock path (which never requires sign-in), so the offline UI is unchanged.
     var rankingRequiresSignIn: Bool {
@@ -272,6 +302,8 @@ final class NavigationDashboardViewModel: ObservableObject {
         let nickname = rankingProfile?.nickname ?? ""
         guard !accountId.isEmpty, !nickname.isEmpty else { return }
 
+        await backfillLegacyBestsOnceIfNeeded(accountId: accountId, nickname: nickname)
+
         // Only rides the server can VERIFY: explicitly ranking-eligible with a sufficient valid-GPS
         // ratio. Legacy rides recorded before the integrity analyzer (validSampleRatio == nil) are
         // excluded — they can never be verified (raw GPS isn't retained to recompute), so submitting
@@ -296,6 +328,13 @@ final class NavigationDashboardViewModel: ObservableObject {
                 }
             }
             guard let best = candidates.max(by: { $0.value < $1.value }) else { continue }
+            // Never regress the board: the one-time legacy backfill may have published a HIGHER
+            // all-time best (e.g. a pre-analyzer 45 km ride). Overwriting it with a lower
+            // "verifiable best" would shrink the user's public record. The floor is the value the
+            // backfill ACTUALLY submitted (persisted on success) — a live recomputation over all
+            // logs would also count effectiveDistance-trimmed and future vehicle-excluded rides,
+            // permanently disabling this catch-up path for legitimate PRs.
+            if best.value < backfillSubmittedBest(for: metric) { continue }
             let log = best.log
             let integrity = RideIntegrityResult(
                 maxSustainedSpeed: log.maxSustainedSpeed ?? 0,
@@ -313,6 +352,91 @@ final class NavigationDashboardViewModel: ObservableObject {
                 integrity: integrity,
                 achievedAt: log.startTime
             )
+        }
+    }
+
+    private static let legacyBackfillDoneKey = "worldRankingLegacyBackfillDone_v1"
+
+    /// UserDefaults key for the value the one-time backfill actually submitted for `metric`.
+    private static func legacyBackfillValueKey(for metric: RankingMetric) -> String {
+        "worldRankingLegacyBackfillValue_v1_\(metric.firestoreMetricId)"
+    }
+
+    /// The value the one-time backfill actually submitted for `metric` (0 when none): the floor
+    /// below which `submitCurrentPersonalBests` must not overwrite the public board.
+    private func backfillSubmittedBest(for metric: RankingMetric) -> Double {
+        UserDefaults.standard.double(forKey: Self.legacyBackfillValueKey(for: metric))
+    }
+
+    /// Sanity-filtered logs the one-time backfill considers: excludes corrupt records (GPS-jump
+    /// rides with implausible average speed) but deliberately keeps vehicle-excluded and
+    /// pre-analyzer (nil-integrity) rides.
+    private var legacyPlausibleLogs: [VoyageLog] {
+        let maxPlausibleKmh = RideIntegrityConfig.default.maxPlausibleKmh
+        return voyageLogs.filter { $0.distance > 0 && $0.averageSpeed <= maxPlausibleKmh }
+    }
+
+    /// ONE-TIME migration (2026-07). Rides recorded before the integrity analyzer existed
+    /// (integrity fields nil) and rides wrongly excluded by the old over-strict vehicle detection
+    /// (CoreMotion labels handlebar-mounted rides `.automotive`) can never be re-analyzed — the raw
+    /// GPS samples are not retained. Rather than silently dropping every pre-fix personal best,
+    /// submit each metric's all-time best ONCE with a pass-through integrity record.
+    ///
+    /// Ban-safety: the server cross-checks entry.value against the integrity record we write here,
+    /// so the pass-through record carries the SAME values (effectiveDistance = raw distance,
+    /// ratio 1.0, eligible). Logs with values above the server caps (90 km/h / 2000 km) or with a
+    /// physically implausible average speed are skipped so a corrupt log (e.g. a GPS-jump ride)
+    /// can never trigger the value-above-cap auto-ban. The done-flag is persisted only when every
+    /// attempted submission reports success, so a network failure retries on the next board open.
+    private func backfillLegacyBestsOnceIfNeeded(accountId: String, nickname: String) async {
+        guard !UserDefaults.standard.bool(forKey: Self.legacyBackfillDoneKey) else { return }
+
+        let maxPlausibleKmh = RideIntegrityConfig.default.maxPlausibleKmh
+        var allSucceeded = true
+        var attempted = false
+        for metric in RankingMetric.allCases {
+            // Sanity floor only (legacyPlausibleLogs) — NOT the integrity verdict.
+            // Vehicle-excluded and legacy-nil rides deliberately pass through.
+            let candidates: [(log: VoyageLog, value: Double)] = legacyPlausibleLogs.compactMap { log in
+                switch metric {
+                case .longestDistance:
+                    return log.distance > 0 ? (log, log.distance) : nil
+                case .topSpeed:
+                    guard let value = log.maxSustainedSpeed, value > 0, value <= maxPlausibleKmh else { return nil }
+                    return (log, value)
+                }
+            }
+            guard let best = candidates.max(by: { $0.value < $1.value }) else { continue }
+            let log = best.log
+            // Pass-through record: the server compares entry.value against effectiveDistance /
+            // maxSustainedSpeed, so those must carry the submitted value for legacy rides.
+            let integrity = RideIntegrityResult(
+                maxSustainedSpeed: log.maxSustainedSpeed ?? 0,
+                effectiveDistance: best.value,
+                validSampleRatio: 1.0,
+                isRankingEligible: true,
+                activityBreakdown: log.activityBreakdown ?? [:]
+            )
+            attempted = true
+            let ok = await worldRankingService.submitBest(
+                metric: metric,
+                value: best.value,
+                accountId: accountId,
+                nickname: nickname,
+                rideId: "\(log.id.uuidString):\(metric.firestoreMetricId)",
+                integrity: integrity,
+                achievedAt: log.startTime
+            )
+            if ok {
+                // Persist what was actually published: `submitCurrentPersonalBests` uses it as the
+                // no-regression floor instead of recomputing over ever-growing logs.
+                UserDefaults.standard.set(best.value, forKey: Self.legacyBackfillValueKey(for: metric))
+            }
+            allSucceeded = allSucceeded && ok
+        }
+
+        if !attempted || allSucceeded {
+            UserDefaults.standard.set(true, forKey: Self.legacyBackfillDoneKey)
         }
     }
 

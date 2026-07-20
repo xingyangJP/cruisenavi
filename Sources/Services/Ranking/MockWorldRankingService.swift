@@ -39,9 +39,39 @@ struct MockWorldRankingService: WorldRankingService {
         rideId: String,
         integrity: RideIntegrityResult,
         achievedAt: Date
-    ) async {
+    ) async -> Bool {
         // Mock: nothing is transmitted. The live FirestoreWorldRankingService writes the private
         // integrity record + the public entry (RANKING_GOLIVE_CHECKLIST §6).
+        return true
+    }
+
+    func fetchMoreEntries(
+        metric: RankingMetric,
+        after last: WorldRankingEntry,
+        limit: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry] {
+        // Mock: the synthesized board is returned whole by `fetchLeaderboard`; there is no more.
+        return []
+    }
+
+    func fetchNeighborhood(
+        metric: RankingMetric,
+        around own: WorldRankingEntry,
+        radius: Int,
+        accountId: String
+    ) async -> [WorldRankingEntry] {
+        // Rebuild the same deterministic board and slice around the own row.
+        let entries = board(
+            metric: metric,
+            userBest: own.value,
+            accountId: own.id,
+            nickname: own.nickname
+        ).entries
+        guard let index = entries.firstIndex(where: { $0.isCurrentUser }) else { return [own] }
+        let lower = max(index - radius, 0)
+        let upper = min(index + radius, entries.count - 1)
+        return Array(entries[lower...upper])
     }
 
     /// Synchronous core so tests can assert without async plumbing. Deterministic.

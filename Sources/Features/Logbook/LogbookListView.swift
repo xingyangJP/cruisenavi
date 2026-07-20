@@ -123,6 +123,11 @@ struct LogbookListView: View {
                                             .font(.caption2)
                                             .foregroundStyle(statusColor(status))
                                     }
+                                    if log.isRankingEligible == false {
+                                        Text(L10n.tr("ランキング対象外"))
+                                            .font(.caption2)
+                                            .foregroundStyle(.orange)
+                                    }
                                 }
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
@@ -252,6 +257,8 @@ private struct LogbookDetailSheet: View {
                             .foregroundStyle(Color.citrusSecondaryText)
                     }
 
+                    rankingEligibilityLine
+
                     rideStoryCard(rideStory)
 
                     if log.routePoints.count > 1 {
@@ -271,6 +278,39 @@ private struct LogbookDetailSheet: View {
             }
             .navigationTitle("ライド詳細")
             .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    /// Ranking-eligibility verdict for this ride. Rides analyzed before the integrity feature
+    /// (all fields nil) show as "not evaluated" so exclusion is never implied without evidence.
+    @ViewBuilder
+    private var rankingEligibilityLine: some View {
+        switch log.isRankingEligible {
+        case .some(true):
+            Text(L10n.tr("ランキング判定: 対象"))
+                .font(.footnote)
+                .foregroundStyle(.green)
+        case .some(false):
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.tr("ランキング判定: 対象外（乗り物移動を検知）"))
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                if let ratio = log.validSampleRatio {
+                    Text(L10n.format("有効サンプル率 %d%%", Int(ratio * 100)))
+                        .font(.caption2)
+                        .foregroundStyle(Color.citrusSecondaryText)
+                }
+                if let automotive = log.activityBreakdown?[RideActivityKind.automotive.rawValue],
+                   automotive > 0 {
+                    Text(L10n.format("乗り物と判定された区間 %d%%", Int(automotive * 100)))
+                        .font(.caption2)
+                        .foregroundStyle(Color.citrusSecondaryText)
+                }
+            }
+        case .none:
+            Text(L10n.tr("ランキング判定: 未判定"))
+                .font(.footnote)
+                .foregroundStyle(Color.citrusSecondaryText)
         }
     }
 

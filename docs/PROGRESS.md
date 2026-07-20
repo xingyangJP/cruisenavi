@@ -480,3 +480,24 @@
 - ランキング画面（Sign in with Apple / アカウント削除 UI）の未ローカライズ文言9件を `en.lproj`（英訳）/`ja.lproj`（恒等）に追加し、画面内日本語キー30個すべて英語対応（`plutil -lint` OK・`BUILD SUCCEEDED`）。`codex/dev` を push し `origin/main` へ fast-forward マージ
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.98` から `1.0.99` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.99` へ同期
 - コード更新ルールに従い `MARKETING_VERSION` を `1.0.97` から `1.0.98` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.98` へ同期。`BUILD SUCCEEDED` を確認
+## 2026-07-20
+- 実走行調査: 実機（TestFlight 1.0.99）の `voyage_logs.json` を取得し、当日の自転車走行（9.84km・平均18.7km/h）が `activityBreakdown: automotive 88.8%` / `validSampleRatio 0.059` / `isRankingEligible=false` で除外されていたことを確認。原因は CMMotionActivity がハンドルバーマウント時の自転車走行を自動車と系統的に誤分類し、旧ロジックが automotive ラベルを信頼度・速度の裏付けなしで即無効化していたため（7/13走行も automotive 100% で同様に除外）
+- 乗り物判定の緩和（`RideIntegrityAnalyzer`）: (1) automotive ラベル単独ではサンプルを無効化しない、(2) 瞬間速度閾値（旧: 50km/h超 && cycling未確認で即無効）を廃止し、「50km/h超を90秒以上**連続**維持 && cycling未確認」の持続巡航ルールに置換（自転車の下りバーストは通し、車の巡航は弾く）、(3) GPS異常（accuracy<0 / 90km/h超）は現行維持。`sustainedVehicleSeconds=90` を `RideIntegrityConfig` に追加
+- 判定結果の可視化: ログブック一覧に「ランキング対象外」バッジ、詳細シートに「ランキング判定: 対象/対象外（乗り物移動を検知・有効サンプル率・乗り物判定区間%）/未判定」を追加。ja/en `Localizable.strings` に6キー追加
+- **ポリシー転換（ユーザー指示）**: 7/12 の「レガシー過去ライドは世界ランキングに反映しない（厳格維持）」を撤回し、**一回限りのレガシーバックフィル**を実装。`backfillLegacyBestsOnceIfNeeded` が世界タブ初回オープン時に全ログ（判定素通り。ただし平均速度>90km/h の破損ログと上限超値は BAN 回避のため除外）から metric 別全時間ベストをパススルー整合性レコード（ratio 1.0 / eligible）付きで投稿。`worldRankingLegacyBackfillDone_v1` フラグは全投稿成功時のみ永続化（失敗時は次回リトライ）
+- `WorldRankingService.submitBest` が成功可否 `Bool` を返すよう変更（バックフィルの at-least-once 用。Mock は常に true）。既存呼び出しは `@discardableResult` で無変更
+- 盤面退行ガード: `submitCurrentPersonalBests` はバックフィル済み全時間ベストを下回る「検証可能ベスト」を投稿しない（低い値での公開記録上書きを防止）
+- 検証: フルユニットテスト 55件全成功（マウント誤判定の回帰テスト `testMountedPhoneMisclassificationStaysEligible` 含む）。実機（iPhone 17 Pro）へ Debug ビルドをインストール済み（データコンテナ保持を確認）
+- 注意: 当日走行の判定フィールドは nil 不可逆（生GPS非保持）のためローカルランキングには載らないが、バックフィルにより distance 45.26km（6/27走行）/ speed 28.9km/h（7/20走行）が世界ランキングへ投稿される見込み
+- コード更新ルールに従い `MARKETING_VERSION` を `1.0.99` から `1.0.100` に更新し、Home の `ver` 表示デフォルト値と README 群を `1.0.100` へ同期
+- サーバー側疎通確認（firebase reauth 後）: バックフィルの2エントリ（distance 45.26km / speed 28.91km/h）が Cloud Function により書き込み3秒後に `verified=true` 済みであることを Firestore 直読で確認。世界ランキング非表示は「検証完了前に閲覧した」タイミング問題で、サーバー異常なし
+- 当日走行のローカル救済: 実機の `voyage_logs.json` を直接編集（アプリSIGKILL→書き戻し→再起動）し、旧ロジックで誤除外された 7/20（9.84km・28.9km/h）と 7/13（6.0km）を `isRankingEligible=true` / `effectiveDistance=raw distance` / `ratio=1.0` に修正。バックフィルでサーバーに送った値と整合
+- ダミーランキングユーザー投入（ユーザー指示）: 100人 × 2 metric を本番 Firestore に投入。距離 1〜30km / 速度 10〜36km/h、整合性レコード→公開エントリの順で REST batchWrite し、本番 Cloud Function の検証パイプラインを通過させる形でテスト。結果: **200件全件 verified=true・reject 0**。uid は全て `dummy` プレフィックス付き（後日一括削除可能）。投入スクリプト: scratchpad/seed_dummies.py（セッション一時領域）
+- 表示確認: 距離ボード yuki 1位（45.26km）、速度ボード yuki 30位/101（28.91km/h）。Top-N クエリ・verified フィルタ・複合インデックスすべて本番で機能
+- ランキングUI改善（ユーザー指摘対応）: (1) 距離/速度・自分/世界タブの選択状態が判別しづらい問題 → システム segmented Picker をカスタム `SegmentedTabs`（選択中はティール塗りカプセル＋白太字）に置換。(2) 世界ランキングを上位10件固定表示から**無限スクロール**化 → `WorldRankingService.fetchMoreEntries`（value降順＋documentID降順の複合カーソル。既存複合インデックスを再利用、同値タイでの取りこぼしなし）を追加し、最終行表示で50件ずつ追加読込。自分の行は実順位が読み込まれるまで下部にピン留め、読み込み済みリストに現れたらピン解除。Mock は追加ページなし（[]）
+- 検証: フルテスト55件全成功。実機インストール済み（Debug 1.0.100）
+- 世界ランキングに「自分の周辺±2順位ブロック」表示を追加: 自分の実順位がまだ読み込まれていない間、下部ピン留めの自分の行を単独表示から「上下±2順位＋自分」のブロック表示に拡張し、すぐ上/下に誰がいるかを可視化。`WorldRankingService` に `fetchNeighborhood(metric:around:radius:accountId:)` を追加
+- Firestore 実装（`FirestoreWorldRankingService`）: 上側（自分より値が大きい行）はページングクエリの完全**逆順**（`value` 昇順＋`documentID` 昇順＋`start(after:)` カーソル）で取得し、既存の複合インデックス（`verified` + `value` + `documentID`）をそのまま再利用（新規インデックス不要）。下側は既存 `fetchMoreEntries` を再利用。順位は `own.rank` からのオフセットで導出し、片側の取得失敗はもう片側＋自分の行に degrade。自分のサーバー文書はローカルベスト由来の `own` 行と重複しないよう除外
+- `RankingView`: ピン留めブロックは読み込み済みリスト（Top-N＋無限スクロール分）と id 重複しない行だけを表示し、スクロールで自分の実順位まで追いついたらブロックを自動吸収（非表示化）。周辺取得は自分が読み込み済みリストに現れていない場合のみ実行
+- `MockWorldRankingService`: 決定的に合成した同一ボードを再構築し、自分の行を中心に `±radius` をスライスして返す（テスト/モック表示でも同じ見え方を再現）
+- 検証: フルユニットテスト全成功（Mock のスライス境界含む）。仕様ドキュメント整合確認: README_TECH_SPEC.md 等 README 群に世界ランキング仕様の記述なし、`RANKING_GOLIVE_CHECKLIST.md` / `RANKING_MODE_PLAN.md` は go-live 時点のスナップショットのため更新不要（Top-N 読み取り仕様自体は不変で、周辺ブロックは追加クエリ）

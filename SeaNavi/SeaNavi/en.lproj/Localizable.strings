@@ -310,3 +310,13 @@
 "あなたの記録とアカウント情報が削除されます。この操作は取り消せません。" = "Your records and account information will be deleted. This can't be undone.";
 "削除する" = "Delete";
 "アカウントを削除できませんでした。再度サインインしてお試しください。" = "Couldn't delete your account. Please sign in again and retry.";
+
+/* Logbook ranking-eligibility feedback */
+"ランキング対象外" = "Not ranked";
+"ランキング判定: 対象" = "Ranking: eligible";
+"ランキング判定: 対象外（乗り物移動を検知）" = "Ranking: excluded (vehicle travel detected)";
+"ランキング判定: 未判定" = "Ranking: not evaluated";
+"有効サンプル率 %d%%" = "Valid samples %d%%";
+"乗り物と判定された区間 %d%%" = "Vehicle-classified segments %d%%";
+
+"さらに読み込み中..." = "Loading more...";

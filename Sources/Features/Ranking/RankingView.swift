@@ -7,6 +7,11 @@ struct RankingView: View {
     @State private var selectedScope: RankingScope = .personal
     @State private var showingNicknameSheet = false
     @State private var worldBoard: WorldRankingBoard?
+    @State private var worldRows: [WorldRankingEntry] = []
+    @State private var pinnedOwnRow: WorldRankingEntry?
+    @State private var neighborhoodRows: [WorldRankingEntry] = []
+    @State private var hasMoreWorld = false
+    @State private var isLoadingMoreWorld = false
     @State private var isLoadingWorld = false
     @State private var isSigningIn = false
     @State private var signInError: String?
@@ -28,18 +33,22 @@ struct RankingView: View {
 
                 ScrollView {
                     VStack(spacing: 20) {
-                        Picker("", selection: $selectedMetric) {
-                            Text("距離").tag(RankingMetric.longestDistance)
-                            Text("速度").tag(RankingMetric.topSpeed)
-                        }
-                        .pickerStyle(.segmented)
+                        SegmentedTabs(
+                            items: [
+                                (RankingMetric.longestDistance, L10n.tr("距離")),
+                                (RankingMetric.topSpeed, L10n.tr("速度"))
+                            ],
+                            selection: $selectedMetric
+                        )
                         .accessibilityLabel(Text("ランキング指標"))
 
-                        Picker("", selection: $selectedScope) {
-                            Text("自分").tag(RankingScope.personal)
-                            Text("世界").tag(RankingScope.world)
-                        }
-                        .pickerStyle(.segmented)
+                        SegmentedTabs(
+                            items: [
+                                (RankingScope.personal, L10n.tr("自分")),
+                                (RankingScope.world, L10n.tr("世界"))
+                            ],
+                            selection: $selectedScope
+                        )
                         .accessibilityLabel(Text("表示範囲"))
 
                         switch selectedScope {
@@ -369,6 +378,10 @@ struct RankingView: View {
         do {
             try await viewModel.deleteWorldRankingAccount()
             worldBoard = nil
+            worldRows = []
+            pinnedOwnRow = nil
+            neighborhoodRows = []
+            hasMoreWorld = false
         } catch {
             signInError = L10n.tr("アカウントを削除できませんでした。再度サインインしてお試しください。")
         }
@@ -401,29 +414,85 @@ struct RankingView: View {
 
     @ViewBuilder
     private func worldBoardCard(_ board: WorldRankingBoard) -> some View {
-        let topEntries = Array(board.entries.prefix(10))
-        let userInTop = topEntries.contains { $0.isCurrentUser }
+        let userInList = worldRows.contains { $0.isCurrentUser }
 
         GlassCard {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(topEntries) { entry in
+            LazyVStack(alignment: .leading, spacing: 12) {
+                ForEach(worldRows) { entry in
                     worldRow(entry)
-                    if entry.id != topEntries.last?.id {
+                        .onAppear {
+                            // Infinite scroll: reaching the last loaded row pulls the next page.
+                            if entry.id == worldRows.last?.id {
+                                Task { await loadMoreWorld() }
+                            }
+                        }
+                    if entry.id != worldRows.last?.id {
                         Divider().overlay(Color.citrusBorder)
                     }
                 }
 
-                // Pin the user's own row if they fall outside the visible top entries.
-                if !userInTop, let userEntry = board.currentUserEntry {
-                    Divider().overlay(Color.citrusBorder)
-                    Text("···")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.citrusSecondaryText)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    worldRow(userEntry)
+                if isLoadingMoreWorld {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text(L10n.tr("さらに読み込み中..."))
+                            .font(.caption)
+                            .foregroundStyle(Color.citrusSecondaryText)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+
+                // Neighborhood block: while the user's real position is not yet scrolled into
+                // view, show the rows directly around them (±2 by rank, own row highlighted) so
+                // they can see exactly who to beat next. Rows already loaded above are filtered
+                // out, so the block shrinks and finally disappears as the scroll catches up.
+                if !userInList {
+                    let block = neighborhoodBlock(excludingLoadedIn: worldRows)
+                    let fallback = pinnedOwnRow.map { [$0] } ?? []
+                    let rows = block.isEmpty ? fallback : block
+                    if !rows.isEmpty {
+                        Divider().overlay(Color.citrusBorder)
+                        Text("···")
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.citrusSecondaryText)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        ForEach(rows) { entry in
+                            worldRow(entry)
+                            if entry.id != rows.last?.id {
+                                Divider().overlay(Color.citrusBorder)
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    /// Neighborhood rows not already loaded above, additionally unique by id within the block
+    /// itself — the service seeds the own row from the LOCAL best, so a diverging verified server
+    /// value could otherwise surface the same account twice, and duplicate `ForEach` ids are
+    /// undefined behavior in SwiftUI.
+    private func neighborhoodBlock(excludingLoadedIn loaded: [WorldRankingEntry]) -> [WorldRankingEntry] {
+        var seen = Set(loaded.map(\.id))
+        return neighborhoodRows.filter { seen.insert($0.id).inserted }
+    }
+
+    /// Appends the next verified page after the last loaded row. `hasMoreWorld` turns false when a
+    /// page comes back short, so a fully-scrolled board stops issuing queries.
+    private func loadMoreWorld() async {
+        guard hasMoreWorld, !isLoadingMoreWorld, let last = worldRows.last else { return }
+        // Capture the metric this page belongs to: the call runs in an unstructured `Task {}`
+        // (from `onAppear`), so switching metric/scope does NOT cancel it. Without the post-await
+        // re-check below, a stale page would be appended to the NEW metric's rows.
+        let metric = selectedMetric
+        isLoadingMoreWorld = true
+        defer { isLoadingMoreWorld = false }
+        let pageSize = 50
+        let more = await viewModel.fetchMoreWorldEntries(metric: metric, after: last, limit: pageSize)
+        guard metric == selectedMetric, selectedScope == .world, !Task.isCancelled else { return }
+        // Defensive de-dup: a cursor page can re-include ids if the board shifted between pages.
+        let known = Set(worldRows.map(\.id))
+        worldRows.append(contentsOf: more.filter { !known.contains($0.id) })
+        hasMoreWorld = more.count == pageSize
     }
 
     @ViewBuilder
@@ -473,12 +542,44 @@ struct RankingView: View {
 
     private func loadWorldBoard() async {
         guard viewModel.rankingProfile != nil else { return }
+        // Capture the metric this load is for. `.task(id:)` cancels a superseded run, but the
+        // Firestore fetches are not cancellation-aware and complete anyway — without the post-await
+        // guards a stale run resuming late would clobber the new metric's board with old rows.
+        let metric = selectedMetric
         isLoadingWorld = true
         // Publish the current personal best (idempotent) so an already-opted-in user's existing best
         // is submitted even without a new PR ride, then read the board back.
         await viewModel.submitCurrentPersonalBests()
-        worldBoard = await viewModel.worldRankingBoard(for: selectedMetric)
+        let board = await viewModel.worldRankingBoard(for: metric)
+        guard metric == selectedMetric, selectedScope == .world, !Task.isCancelled else { return }
+        worldBoard = board
+
+        // Split the fetched page into the in-order list and the appended out-of-order own row
+        // (`fetchLeaderboard` pins the user's row at the END, with its real rank, when they are
+        // not inside the page — detectable as rank != position).
+        var rows = board.entries
+        if let lastRow = rows.last, lastRow.isCurrentUser, lastRow.rank != rows.count {
+            pinnedOwnRow = lastRow
+            rows.removeLast()
+        } else {
+            pinnedOwnRow = board.currentUserEntry
+        }
+        worldRows = rows
+        // The live first page is `topN` (100) rows — a full page means more may follow. The mock
+        // returns everything at once, so it never paginates.
+        hasMoreWorld = !board.isMockData && rows.count >= 100
+        isLoadingMoreWorld = false
         isLoadingWorld = false
+
+        // Load the ±2 neighborhood around the user's own rank for the pinned block. Only needed
+        // when the user is outside the loaded page; degrades to the bare own row on failure.
+        if let own = pinnedOwnRow, !rows.contains(where: { $0.isCurrentUser }) {
+            let neighborhood = await viewModel.fetchWorldNeighborhood(metric: metric, around: own)
+            guard metric == selectedMetric, selectedScope == .world, !Task.isCancelled else { return }
+            neighborhoodRows = neighborhood
+        } else {
+            neighborhoodRows = []
+        }
     }
 
     // MARK: - Helpers
@@ -518,6 +619,39 @@ struct RankingView: View {
 private enum RankingScope {
     case personal
     case world
+}
+
+/// High-contrast replacement for the system segmented `Picker`, whose selected state was hard to
+/// tell apart on the app's light gradient canvas: the selected segment gets a filled teal capsule
+/// with white bold text, unselected segments stay muted.
+private struct SegmentedTabs<Value: Hashable>: View {
+    let items: [(Value, String)]
+    @Binding var selection: Value
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(items, id: \.0) { value, label in
+                let isSelected = selection == value
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        selection = value
+                    }
+                } label: {
+                    Text(label)
+                        .font(.subheadline.weight(isSelected ? .bold : .medium))
+                        .foregroundStyle(isSelected ? .white : Color.citrusSecondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(isSelected ? Color.aquaTeal : .clear, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            }
+        }
+        .padding(4)
+        .background(Color.white.opacity(0.55), in: Capsule())
+        .overlay(Capsule().stroke(Color.citrusBorder))
+    }
 }
 
 /// Opt-in nickname registration sheet. Inline validation reuses the pure `NicknameValidator`;

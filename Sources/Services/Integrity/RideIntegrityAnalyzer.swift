@@ -5,10 +5,17 @@ struct RideIntegrityConfig {
     var sustainedWindow: TimeInterval = 3.0   // seconds
     var maxPlausibleKmh: Double = 90.0        // sanity cap
     var minValidSampleRatio: Double = 0.6     // eligibility threshold
-    /// §4.2 vehicle-suspicion: a sample cruising above this speed while NOT positively confirmed
-    /// as `.cycling` is treated as a vehicle segment and excluded, even if CoreMotion never
-    /// labelled it `.automotive` (e.g. a fast car ride returned only `.unknown` segments).
+    /// §4.2 vehicle-suspicion: samples are excluded as vehicle travel only when speed stays above
+    /// this for `sustainedVehicleSeconds` CONTINUOUSLY without positive `.cycling` confirmation.
+    /// A single sample above this speed is NOT vehicle evidence — bikes burst past 70 km/h on
+    /// descents — and neither is a CoreMotion `.automotive` label on its own: handlebar-mounted
+    /// phones read as automotive for most of a genuine ride (no pedaling body motion reaches the
+    /// accelerometer), so the label is only trusted when this sustained-cruise rule corroborates it.
     var vehicleCruiseKmh: Double = 50.0
+    /// Minimum continuous time above `vehicleCruiseKmh` before a run counts as vehicle cruising.
+    /// Cars hold 50+ km/h for minutes; a bike needs a long steep descent to do so, and a descent
+    /// that CoreMotion confirms as `.cycling` is still kept.
+    var sustainedVehicleSeconds: TimeInterval = 90.0
     static let `default` = RideIntegrityConfig()
 }
 
@@ -43,18 +50,30 @@ enum RideIntegrityAnalyzer {
         let orderedSamples = samples.sorted { $0.timestamp < $1.timestamp }
 
         // 2. Per-sample activity lookup + 3. per-sample validity.
+        //
+        // Vehicle detection is deliberately conservative about what counts as evidence:
+        // - A CoreMotion `.automotive` label alone does NOT invalidate. Handlebar-mounted phones
+        //   (the normal setup for a bike-nav app) miss the pedaling body motion that cycling
+        //   detection relies on and get classified automotive for most of a legitimate ride.
+        // - An instantaneous speed above `vehicleCruiseKmh` alone does NOT invalidate either;
+        //   bikes exceed 70 km/h on descents.
+        // What DOES read as vehicle travel is *sustained* cruising: staying above
+        // `vehicleCruiseKmh` continuously for `sustainedVehicleSeconds` without positive
+        // `.cycling` confirmation. This also closes the bypass where a fast car ride yields
+        // `.unknown` (or no) segments instead of `.automotive`. The residual gap — a car ride at
+        // bike-plausible speeds — is deferred to Phase-B server-side verification (plan §4.4).
+        let kinds = orderedSamples.map { coveringKind(for: $0, in: segments) }
+        let vehicleSuspect = sustainedVehicleRunFlags(
+            orderedSamples: orderedSamples,
+            kinds: kinds,
+            config: config
+        )
         var validity: [Bool] = []
         validity.reserveCapacity(orderedSamples.count)
-        for sample in orderedSamples {
-            let kind = coveringKind(for: sample, in: segments)
-            // §4.2 vehicle-suspicion: high cruising speed that CoreMotion did NOT positively
-            // confirm as cycling is treated as vehicle travel. This closes the bypass where a
-            // fast car ride yields `.unknown` (or no) segments instead of `.automotive`.
-            let isVehicleSuspect = sample.speedKmh > config.vehicleCruiseKmh && kind != .cycling
-            let isInvalid = kind == .automotive
-                || sample.speedKmh > config.maxPlausibleKmh
+        for (index, sample) in orderedSamples.enumerated() {
+            let isInvalid = sample.speedKmh > config.maxPlausibleKmh
                 || sample.horizontalAccuracy < 0
-                || isVehicleSuspect
+                || vehicleSuspect[index]
             validity.append(!isInvalid)
         }
 
@@ -100,6 +119,35 @@ enum RideIntegrityAnalyzer {
             isRankingEligible: isRankingEligible,
             activityBreakdown: activityBreakdown
         )
+    }
+
+    /// Flags samples that sit inside a sustained vehicle-cruise run: a maximal stretch of
+    /// consecutive samples all above `vehicleCruiseKmh` and none positively confirmed `.cycling`,
+    /// spanning at least `sustainedVehicleSeconds`. Runs shorter than that are treated as
+    /// legitimate bursts (descents) and kept.
+    private static func sustainedVehicleRunFlags(
+        orderedSamples: [RideLocationSample],
+        kinds: [RideActivityKind],
+        config: RideIntegrityConfig
+    ) -> [Bool] {
+        var flags = [Bool](repeating: false, count: orderedSamples.count)
+        var runStart: Int? = nil
+        for index in 0...orderedSamples.count {
+            let inRun = index < orderedSamples.count
+                && orderedSamples[index].speedKmh > config.vehicleCruiseKmh
+                && kinds[index] != .cycling
+            if inRun {
+                if runStart == nil { runStart = index }
+            } else if let start = runStart {
+                let span = orderedSamples[index - 1].timestamp
+                    .timeIntervalSince(orderedSamples[start].timestamp)
+                if span >= config.sustainedVehicleSeconds {
+                    for i in start..<index { flags[i] = true }
+                }
+                runStart = nil
+            }
+        }
+        return flags
     }
 
     /// Finds the covering segment for a sample. If multiple match, prefers highest confidence
